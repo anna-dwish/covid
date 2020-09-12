@@ -1,0 +1,16 @@
+---
+title: "Introduction"
+author: "Anna Darwish"
+date: "9/2/2020"
+output: html_document
+---
+
+```{r }
+covid.df <- read.csv("merged_surveys.csv")
+```
+
+# Overview
+
+```{r age, echo=FALSE}
+hist(covid.df$age)
+```
