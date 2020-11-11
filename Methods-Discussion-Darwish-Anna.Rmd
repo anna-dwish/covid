@@ -1,0 +1,1206 @@
+---
+title: "Methods and Preliminary Discussion: Social Distancing Adherence in North Carolina"
+author: "Anna Darwish"
+date: "9/13/2020"
+geometry: "left=1.25cm,right=1.25cm,top=1.3cm,bottom=1.3cm"
+output: pdf_document
+---
+
+```{r, function checking for installed packages, echo=FALSE, results="hide", include=FALSE}
+# Validate that all necessary packaged have been downloaded, install otherwise or throw err package DNE
+pkgTest <- function(x)
+{
+  if (!require(x,character.only = TRUE))
+  {
+    install.packages(x,repos = "http://cran.r-project.org", dep=TRUE)
+    if(!require(x,character.only = TRUE)) stop("Package not found")
+  }
+}
+```
+
+```{r Package Test Libraries, echo=FALSE, results="hide", include=FALSE}
+pkgTest("arm")
+pkgTest("broom")
+pkgTest("cvms")
+pkgTest("dplyr")
+pkgTest("ggplot2")
+pkgTest("tidyr")
+pkgTest("knitr")
+pkgTest("kableExtra")
+pkgTest("gridExtra")
+pkgTest("pander")
+pkgTest("MASS")
+pkgTest("mice")
+pkgTest("lme4")
+pkgTest("plyr")
+pkgTest("lmerTest")
+pkgTest("glmnet")
+```
+
+```{r Load in Libraries, echo=FALSE, results="hide", include=FALSE}
+library(arm)
+library(broom)
+library(cvms)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+library(gridExtra)
+library(pander)
+library(MASS)
+library(mice)
+library(lme4)
+library(plyr)
+library(lmerTest)
+library(glmnet)
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
+ggplot2::theme_set(new = theme_bw())
+set.seed(123)
+```
+
+```{r Read in Data, echo=FALSE}
+covid.df <- read.csv("merged_surveys.csv")
+covid.df[covid.df==""]<-NA
+## take most recent survey answers for each unique participant
+covid.df <- covid.df %>% group_by(uniqueID) %>% top_n(1, Date)
+covid.df <- covid.df[-c(2:4,28:30,32,34:36,38:52,54,58)]
+```
+
+```{r Handle Misimputations and Recode Variables, echo=FALSE}
+covid.df$week <- as.numeric(substring(covid.df$week,5))
+covid.df$Completed.Survey <- as.factor(covid.df$Completed.Survey)
+covid.df$DEMOGRAPHICS...GENDER <- as.factor(covid.df$DEMOGRAPHICS...GENDER)
+covid.df$Q19.20..Race...Ethnicity <- as.factor(covid.df$Q19.20..Race...Ethnicity)
+covid.df$Q19.20..Race...Ethnicity <- relevel(covid.df$Q19.20..Race...Ethnicity, ref="White")
+# Assuming 0-3 means poor, 4-5 means fair, 6-7 means good, 8-9 means very good
+covid.df <- covid.df %>% mutate(Q1..Health.Quality = case_when(
+          Q1..Health.Quality == "6" ~ "Good",
+          Q1..Health.Quality == "7" ~ "Good",
+          Q1..Health.Quality == "5" ~ "Fair",
+          Q1..Health.Quality == "9" ~ "Very Good",
+          TRUE ~ Q1..Health.Quality))
+
+covid.df <- covid.df %>% mutate(Q5..Children.in.HH = case_when(
+          Q5..Children.in.HH == "Three or more" ~ "3",
+          Q5..Children.in.HH == "Two" ~ "2",
+          Q5..Children.in.HH == "One" ~ "1",
+          Q5..Children.in.HH == "None" ~ "0",
+          TRUE ~ Q5..Children.in.HH))
+covid.df$Q5..Children.in.HH <- as.numeric(covid.df$Q5..Children.in.HH)
+
+covid.df <- covid.df %>% mutate(Q7..Six.Feet.Away...If.Q6...0. = case_when(
+          Q6..Non.HH.Face.to.Face.Count == 0 ~ 0,
+          TRUE ~ Q7..Six.Feet.Away...If.Q6...0.))
+
+covid.df <- covid.df %>% mutate(Q9..Children.Interacting.with.Other.Children = case_when(
+          Q5..Children.in.HH == 0 ~ "No",
+          Q9..Children.Interacting.with.Other.Children == "0" ~ "No",
+          TRUE ~ Q9..Children.Interacting.with.Other.Children))
+
+covid.df <- covid.df %>% 
+  mutate(Q16..NC.Response.to.Coronavirus = case_when(
+          Q16..NC.Response.to.Coronavirus == "4" ~ "Underestimating",
+          Q16..NC.Response.to.Coronavirus == "5" ~ "Appropriate",
+          Q16..NC.Response.to.Coronavirus == "6" ~ "Appropriate",
+          Q16..NC.Response.to.Coronavirus == "9" ~ "Appropriate",
+          Q16..NC.Response.to.Coronavirus == "Most are underestimating the risks" ~ "Underestimating",
+          Q16..NC.Response.to.Coronavirus == "Most are reacting appropriately" ~ "Appropriate",
+          Q16..NC.Response.to.Coronavirus == "Most are overreacting to the actual risks" ~ "Appropriate",
+          TRUE ~ Q16..NC.Response.to.Coronavirus))
+
+covid.df$Q18..College.Degree <- as.character(covid.df$Q18..College.Degree)
+covid.df <- covid.df %>% 
+  mutate(Q18..College.Degree = case_when(
+          Q18..College.Degree == "3" ~ "Yes",
+          Q18..College.Degree == "4" ~ "No",
+          Q18..College.Degree == "5" ~ "Yes",
+          Q18..College.Degree == "9" ~ NA_character_,
+          TRUE ~ Q18..College.Degree))
+
+covid.df$Q19.20..Race...Ethnicity <- as.character(covid.df$Q19.20..Race...Ethnicity)
+covid.df <- covid.df %>% 
+  mutate(Q19.20..Race...Ethnicity = case_when(
+          Q19.20..Race...Ethnicity == "Hispanic or Latino" ~ "Hispanic.Latino",
+          Q19.20..Race...Ethnicity == "Another race" ~ "Other",
+          TRUE ~ Q19.20..Race...Ethnicity))
+```
+
+```{r Regression Imputation, echo=FALSE, warning=FALSE}
+regression_imputation <- function(df, predictor.vars, missing.var, categorical.response = FALSE, post.predict.func=NA){
+  missing.idx <- grep(missing.var, colnames(df))
+  predictor.idxs <- match(predictor.vars,names(df))
+  
+  model.df <- df[!is.na(df[,missing.idx]), ]
+  
+  f <- as.formula(paste(missing.var, paste(predictor.vars, collapse = " + "), sep = " ~ "))
+  
+  if (!categorical.response){
+    mod <- lm(f, data=model.df, weights=weight)
+  }
+  else{
+     model.df[,missing.idx] <- as.factor(as.character(model.df[,missing.idx]))
+     mod <- glm(f, family=binomial,data=model.df, weights=weight)
+  }
+  
+  mod <- stepAIC(mod, direction = "backward", trace = FALSE, weights=weight)
+  
+  
+  for (i in 1:nrow(df)){
+    if (is.na(df[i,missing.idx])){
+      current.predictor.values <- df[i,c(predictor.vars)]
+      prediction <- predict(mod, current.predictor.values)
+      
+      if (!is.na(post.predict.func)){
+        prediction <- post.predict.func(prediction)
+      }
+      else if (categorical.response){
+        if (prediction > .5){
+          df[i,missing.idx] <- "Yes"
+        } else{
+          df[i,missing.idx] <- "No"
+        }
+      }
+    }
+    
+  }
+  return(df$Q18..College.Degree)
+}
+```
+
+
+```{r Breakoff Calculations, echo=FALSE, warning=FALSE}
+covid.df$breakoff <- rep(NA,nrow(covid.df))
+
+breakoff.finder <- function(x){
+  if(x$Completed.Survey == "True"){
+    return(NA)
+  }
+  ## Fetch all NA values in current row
+  na.indices <- sort(which(is.na(x)))
+  
+  ## Remove any meta CCL data that aren't survey questions so first flag is a survey question, 6th index is Q4
+  na.indices <- na.indices[na.indices > 5 & na.indices < 26]
+  na.colnames <- colnames(covid.df)[na.indices]
+  
+  return(colnames(covid.df)[na.indices[1]])
+}
+covid.df$breakoff <- sapply(1:nrow(covid.df), function(x) breakoff.finder(covid.df[x,]))
+
+covid.df.imp <- covid.df[,c("Q1..Health.Quality",
+                            "age",
+                            "DEMOGRAPHICS...GENDER",
+                            "Q4..Number.of.People.in.HH",
+                            "Q5..Children.in.HH",
+                            "Q19.20..Race...Ethnicity",
+                            "week",
+                            "trump_approve_score")]
+
+imp.covid.df <- mice(covid.df.imp, print=F)
+
+complete.covid.df <- list(complete(imp.covid.df,1),
+                          complete(imp.covid.df,2),
+                          complete(imp.covid.df,3),
+                          complete(imp.covid.df,4),
+                          complete(imp.covid.df,5))
+
+for (i in 1:5){
+  filled.in.vars <- complete.covid.df[[i]]
+  covid.df.imp <- covid.df
+  for (j in 1:ncol(filled.in.vars)){
+    col.name <- colnames(filled.in.vars)[j]
+    covid.df.imp[,c(col.name)] = filled.in.vars[,c(col.name)]
+  }
+  regression.predictors = c("age",
+                            "DEMOGRAPHICS...GENDER",
+                            "Q4..Number.of.People.in.HH",
+                            "Q5..Children.in.HH",
+                            "Q19.20..Race...Ethnicity")
+  covid.df.imp$Q18..College.Degree <- regression_imputation(covid.df.imp, regression.predictors,"Q18..College.Degree",categorical.response = TRUE)
+  complete.covid.df[[i]] <- covid.df.imp
+}
+```
+
+```{r Evaluated Social Distancing Response Variable, warning=FALSE,echo=FALSE}
+sensitivity.breakoff <- c("Q6..Non.HH.Face.to.Face.Count", 
+                          "Q7..Six.Feet.Away...If.Q6...0.",
+                          "Q10..Times.in.Group...20.in.Last.Week",
+                          "Family",
+                          "Friends",
+                          "Co.workers",
+                          "Clients..patients..or.patrons",
+                          "Any.other.type.of.person.not.already.mentioned",
+                          "Q13..Currently.Practicing.Social.Distancing.",
+                          "Q17..Changes.to.Routine")
+for (i in 1:5){
+  curr.covid.df <- complete.covid.df[[i]]
+  
+  curr.covid.df$Social.Distancing.Adherence <- rep(TRUE,nrow(curr.covid.df))
+  curr.covid.df <- curr.covid.df %>% mutate(Social.Distancing.Adherence = case_when(
+          Q6..Non.HH.Face.to.Face.Count == 0 ~ TRUE,
+          Q7..Six.Feet.Away...If.Q6...0. -  Q6..Non.HH.Face.to.Face.Count != 0 ~ FALSE,
+          Q7..Six.Feet.Away...If.Q6...0. -  Q6..Non.HH.Face.to.Face.Count == 0 ~ TRUE,
+          grep(breakoff,sensitivity.breakoff) > 0 ~ FALSE,
+          TRUE ~ NA))
+  
+  curr.covid.df <- curr.covid.df %>% mutate(Q13..Currently.Practicing.Social.Distancing. = case_when(
+          Q13..Currently.Practicing.Social.Distancing. == "Yes" ~ TRUE,
+          Q13..Currently.Practicing.Social.Distancing. == "No" ~ FALSE,
+          TRUE ~ NA))
+  
+  complete.covid.df[[i]] = curr.covid.df
+}
+covid.df.original <- covid.df
+```
+
+# Introduction
+
+## Background
+
+As of Sunday, September 13, 2020, there have been over twenty-eight million cases of COVID-19 worldwide and nearly one million reported deaths [[1]][Bibliography]. As labs and pharamaceutical companies race across the world to develop a vaccine [[2]][Bibliography], we have been reminded repeatedly that the best defense against COVID-19 is social distancing [[3]][Bibliography]. Social distancing is defined as "a set of non-pharmaceutical interventions or measures intended to prevent the spread of a contagious disease by maintaining a physical distance between people and reducing the number of times people come into close contact with each other" [[3]][Bibliography]. While many other countries around the world were either grappling with the first spikes in the virus or reinstating measures in response to a second wave, the U.S. came under fire as states began to relax social distancing measures as soon as early May [[4]][Bibliography]. Leaders in the fight against the pandemic, including WHO Director-General Tedros Adhanom Ghebreyesus, argue that "The politicization of the pandemic has exacerbated [COVID-19]" [[5]][Bibliography]. 
+
+## Literature Review
+
+Within the U.S., there have been deep divisions between Democrats and Republicans with regards to their perceptions of the severity of the virus, the effectiveness of social distancing, and quality of Trump's response to COVID [[6]][Bibliography]. Some have argued this may be due to the fact that Democrats tend to occupy more densely populated urban areas and therefore have a stronger personal incentive to socially distance [[7]][Bibliography], However, in a study conducted in early April, researchers found that even after controlling carefully for such factors, partisan gaps in beliefs about the severity of COVID19 and the importance of social distancing remain statistically and economically significant [[7]][Bibliography].
+
+## Motivation & Goals
+
+As we approach the winter months, scientists anticipate a spike in COVID cases, which will be compounded by the return of the flu [[8]][Bibliography]. Understanding the likelihood that a given resident will adhere to social distancing measures will be critical for informing local and national policies on social distancing measures. For this this paper, I will be building on the previous research conducted in this area by exploring social distancing adherence in North Carolina. NC is a particularly interesting case study to explore, given its reputation as a "swing state" and political heterogeneity [[9]][Bibliography]. 
+
+In this paper, I will use be exploring the following questions:
+
+1. Which demographic covariates are most influential with respect to social distancing adherence?
+2. Are there significant changes in one's likelihood of social distancing adherence across different levels of estimated approval of Trump's COVID policies, after accounting for key demographic covariates?
+    
+# Data Overview
+
+## Collection Methods
+
+This survey data was commissioned by Duke Forge & Duke University's Social Science Research Institute (SSRI) COVID19 Digital Lab and conducted by Clarity+Campaign Labs (CCL) from March 29, 2020 through May 11, 2020. From the initial surveys sent in the first week, some participants agreed to participate in follow-up surveys throughout the following weeks. Due to this longitudinal aspect of the data, there are 8885 survey responses involving 7582 unique individuals. A copy of this survey is linked [here](https://github.com/MIDS-at-Duke/duke-social-distancing-survey/blob/master/SurveyQuestions.pdf), and listed in the Appendix.
+
+Some of the questions asked included the number of people the respondent had face-to-face contact with outside of their household, whether they maintained a at least 6 feet of distance in these encounters, general demographic information, and the respondents' perceptions of how other North Carolinians were responding to COVID-19. This was augmented with internal databases from Clarity Campaigns, which mapped respondents' voter information to their expected opinions on various political topics, such as their approval of Trump.
+
+In order to glean any accurate estimates and models from this survey data, the surveyors also re-weighted the data in order to be reflective of the North Carolina adult (>=18) population. For this reason, any participant who did not answer questions 2 and 3 was discarded by the surveyors, as they needed the age and gender of the participant to calculate the weight. 
+
+This survey was conducted in two forms: individuals who answered automated (IVR) surveys (via landlines), and individuals who answered (live) cell-phone survey calls. The phone numbers selected for this study came from "commercial appends to voter registration data, in addition to commercially collected numbers of non-registered individuals consolidated by TargetSmart". Note that for numerical questions, respondents contacted via IVR surveys would have to answer by punching in a single digit. For this reason, all numerical responses were limited to 0,1,2,...,9. For a full data dictionary, please see Table 5 in the Appendix.
+
+## Missing Data Overview & Handling
+
+Of the 7582 total surveys conducted with unique participants, 1763 were incomplete. Of the 1763 incomplete surveys, 1761 of them appear to be breakoffs, meaning the participant ended the survey mid-interview and did not complete the remaining questions. Frequent causes for breakoff include "topic, sensitivity of questions, burden of answering the question, format of the questions, number of questions on a page, and layout" [[10]][Bibliography]. In the Appendix, please reference Table 6 to see a distribution of the question numbers that triggered the break-off. The top four most frequent break-offs, in order, were *Q4. Number of People in HH*, *Q6. Non-HH Face to Face Count*, and *Q11b. Within 10 Ft of a Friend in Last 24 Hrs*, and *Q10. Times in Group > 20 in Last Week*.
+
+Because of the weighting requirements described in the previous section, question 4 is the earliest point any observation in the final dataset would be a break-off point. Only three participants skipped the first question regarding health quality before continuing with the rest of the survey. A potential reason for terminating at this question could be privacy concerns.
+
+Though there is no way to discern why any of the next three questions would trigger a given participant to end the survey, some possibilities include the social shame attached to questions 6, 11b, and 10 [[11]][Bibliography], [[12]][Bibliography]. In an Advocate article, John Casey asserts that "Those who ignore, or consciously disobey these pandemic rules are either right-wing patriots fighting for freedom, impatient and misguided miscreants, or bored narcissists who put their selfish needs above the greater good" [[12]][Bibliography]. This critical view of those who fail to socially distance could have incited participants who are not social distancing to terminate the survey. For this reason, this is a limiting factor in our study as it could lend to misunderstanding regarding demographics that are likely not social distancing.
+
+## Response Variable
+
+While the survey included a blanket question, "Are you currently practicing social distancing, or in other words, are you deliberately increasing the physical space between you and other people from outside your household to avoid spreading illness?", this paper will generate a new response variable for social distancing adherence due to discrepancies between answers to this broad question and specific ones detailing the respondents' behaviors. 
+
+This response variable was generated as follows: a respondent will be classified as having adhered to social distancing policies if they either did not have any non-household face to face encounters or ensured they stayed at least 6+ feet away in those encounters. This equates to answering 0 for question 6 or reporting the same number of encounters for questions 6 and 7.
+
+However, even if a respondent did maintain at least 6+ feet away in these encounters, a respondent will be classified as having violated social distancing policies if one or more of these encounters involved over 20 people. This equates to answering with any value greater than 0 for question 10. Finally, participants who ended the survey before completion at a question pertinent to social distancing guidelines (see Table 6 in the Appendix) were labeled as violating social distancing measures. This operates under the assumption they were uncomfortable answering that specific question because they had violated that rule. 
+
+This yielded full coverage for the new response variable. For the remainder of this study, I will refer to this new response variable as *Evaluated Social Distancing Adhereance (ESDA)* and the survey question as *Self-Reported Social Distancing Adhereance (SSDA)*.
+
+```{r Self-Reported versus Evaluated Social Distancing Measures, warning=FALSE, echo=FALSE}
+covid.df <- complete.covid.df[[1]]
+response.var.dist.df <- data.frame(True = c(round(sum(covid.df$Social.Distancing.Adherence == TRUE)/nrow(covid.df),2)
+                          ,round((sum(!is.na(covid.df$Q13..Currently.Practicing.Social.Distancing.) &
+                                        covid.df$Q13..Currently.Practicing.Social.Distancing.)/nrow(covid.df)),2)), 
+                 False = c(round(sum(covid.df$Social.Distancing.Adherence == FALSE)/nrow(covid.df),2)
+                          ,round((sum(!is.na(covid.df$Q13..Currently.Practicing.Social.Distancing.) &
+                                        !covid.df$Q13..Currently.Practicing.Social.Distancing.)/nrow(covid.df)),2)), 
+                 Missing = c(round(sum(is.na(covid.df$Social.Distancing.Adherence))/nrow(covid.df),2)
+                          ,round((sum(is.na(covid.df$Q13..Currently.Practicing.Social.Distancing.))/nrow(covid.df)),2)))
+rownames(response.var.dist.df) <- c("ESDA","SSDA")
+kable(response.var.dist.df, escape = F, caption = "Evaluated versus Self-Reported Social Distancing") %>%
+  kable_styling(latex_options = "hold_position")
+```
+
+## Predictor Variables
+
+The following variables will be examined in this study. Please see Table 5 in the Appendix for more details on their meanings and values:
+
+a) **trump_approval_score**: This ranking indicates the estimated respondents' level of approval of Trump's COVID policies from a scale of 1-5 and was predicted by Clarity Campaigns. The prediction was based on voter file records for respondents who were registered to vote.
+b) **age**: The age in years of the participant.
+c) **Demographics - Gender**: The biological sex of the participant.
+d) **Q4..Number.of.People.in.HH**: The number of people living with the participant, including the participant themselves.
+e) **Q5..Children.in.HH**: The number of children in the household.
+f) **Q18..College.Degree**: Whether participant has a college degree.
+g) **Q19.20..Race...Ethnicity**: This survey combined race and ethnicity information of the participant by only asking non-Hispanic/non-Latino participants about their race. 
+h) **Week**: This variable indicates which week the data was collected.
+i) **county_name**: Name of the participant's county
+
+## Exploratory Data Analysis
+
+```{r EDA Plots, fig.width=8,warning=FALSE, echo=FALSE}
+#extract legend
+#https://github.com/hadley/ggplot2/wiki/Share-a-legend-between-two-ggplot2-graphs
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
+
+covid.df$trump_approve_score <- as.factor(covid.df$trump_approve_score)
+covid.df$Q19.20..Race...Ethnicity <- as.factor(covid.df$Q19.20..Race...Ethnicity)
+covid.df$Q19.20..Race...Ethnicity <- relevel(covid.df$Q19.20..Race...Ethnicity, ref="White")
+covid.df$week <- as.factor(covid.df$week)
+covid.df$Q5..Children.in.HH <- as.factor(covid.df$Q5..Children.in.HH)
+
+# proportional barplot
+# https://stackoverflow.com/questions/26586876/insert-labels-in-proportional-bar-chart-with-ggplot2-and-geom-text
+dat <- ddply(covid.df, .(trump_approve_score), function(.) {
+    res <- cumsum(prop.table(table(factor(.$Social.Distancing.Adherence)))) # re-factor to use only used levels
+    res2 <- prop.table(table(factor(.$Social.Distancing.Adherence))) # re-factor to use only used levels 
+    data.frame(lab = names(res), y = c(res), lab2 = rev(res2), pos = cumsum(rev(res2)) - 0.5*rev(res2))
+})
+
+p1 <- ggplot(covid.df, aes(x = trump_approve_score)) + 
+  geom_bar(aes(fill = Social.Distancing.Adherence), position = 'fill') +
+  geom_text(aes(label = round(lab2.Freq, 2), x = trump_approve_score, y = pos.Freq), data = dat) +
+  labs(title = "Adherence over Trump Approval",
+         y = "Proportion", 
+         x = "Trump Approval Score (Low to High)",
+         fill = "Social Distancing Adherence",
+         caption = "") +
+  theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 12), legend.direction="horizontal") +
+  guides(fill=guide_legend("Adherence"))
+
+dat <- ddply(covid.df, .(Q18..College.Degree), function(.) {
+    res <- cumsum(prop.table(table(factor(.$Social.Distancing.Adherence)))) # re-factor to use only used levels
+    res2 <- prop.table(table(factor(.$Social.Distancing.Adherence))) # re-factor to use only used levels 
+    data.frame(lab = names(res), y = c(res), lab2 = rev(res2), pos = cumsum(rev(res2)) - 0.5*rev(res2))
+})
+
+p6 <- ggplot(covid.df, aes(x = Q18..College.Degree)) + 
+  geom_bar(aes(fill = Social.Distancing.Adherence), position = 'fill') +
+  geom_text(aes(label = round(lab2.Freq, 2), x = Q18..College.Degree, y = pos.Freq), data = dat) +
+  labs(title = "Social Distancing Adherence over College Degree",
+         y = "Frequency", 
+         x = "College Degree",
+         fill = "Social Distancing Adherence",
+         caption = "") +
+  theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 12), legend.position="none")
+
+dat <- ddply(covid.df, .(Q19.20..Race...Ethnicity), function(.) {
+    res <- cumsum(prop.table(table(factor(.$Social.Distancing.Adherence)))) # re-factor to use only used levels
+    res2 <- prop.table(table(factor(.$Social.Distancing.Adherence))) # re-factor to use only used levels 
+    data.frame(lab = names(res), y = c(res), lab2 = rev(res2), pos = cumsum(rev(res2)) - 0.5*rev(res2))
+})
+
+p7 <- ggplot(covid.df, aes(x = Q19.20..Race...Ethnicity)) + 
+  geom_bar(aes(fill = Social.Distancing.Adherence), position = 'fill') +
+  geom_text(aes(label = round(lab2.Freq, 2), x = Q19.20..Race...Ethnicity, y = pos.Freq), data = dat) +
+  labs(title = "Adherence over Race-Ethnicity",
+         y = "Frequency", 
+         x = "Race-Ethnicity",
+         fill = "Social Distancing Adherence",
+         caption = "") +
+  theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 12), legend.position="none")
+
+dat <- ddply(covid.df, .(week), function(.) {
+    res <- cumsum(prop.table(table(factor(.$Social.Distancing.Adherence)))) # re-factor to use only used levels
+    res2 <- prop.table(table(factor(.$Social.Distancing.Adherence))) # re-factor to use only used levels 
+    data.frame(lab = names(res), y = c(res), lab2 = rev(res2), pos = cumsum(rev(res2)) - 0.5*rev(res2))
+})
+
+p8 <- ggplot(covid.df, aes(x = week)) + 
+  geom_bar(aes(fill = Social.Distancing.Adherence), position = 'fill') +
+  geom_text(aes(label = round(lab2.Freq, 2), x = week, y = pos.Freq), data = dat) +
+  labs(title = "Social Distancing Adherence over Time",
+         y = "Frequency", 
+         x = "Weeks Since May 29",
+         fill = "Social Distancing Adherence",
+         caption = "") +
+  theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 12), legend.position="none")
+
+
+eda.legend <- g_legend(p1)
+
+grid.arrange(arrangeGrob(p1 + theme(legend.position="none"),
+                         p6,
+                         p7,
+                         p8,
+                         nrow=2, top = "Figure 1"),
+             eda.legend, nrow=2,heights=c(10, 1))
+
+```
+
+The following plots provide a brief overview of *ESDA* over a few notable variables of interest: *trump_approval_score*, *Q18..College.Degree*, *Q19.20..Race...Ethnicity*, *week*. Please see Figure 2 in the Appendix for the remaining *ESDA* plots.
+
+Firstly, from the top left plot, there does not appear to be significant differences in *ESDA* across different levels of approval scores of Trump. Secondly, we can see in the upper-right plot that participants with a college degree have a higher likelihood of *ESDA*. This is likely due to the fact that people without college degrees are more likely to have front-line jobs [[13]][Bibliography]. From the lower-left plot, it appears as though Asian and Hispanic/Latino identifying participants had a slightly higher rate of *ESDA*, while Black participants had a slightly lower rate of *ESDA*. An important point to keep in mind here is that Black people are much more likely to be front-line workers[[15]][Bibliography]. Finally, there appears to be relatively consistent breakdown for *ESDA* throughout the weeks this survey took place.
+
+# Methods
+
+To ensure independence among observations, I took the most recent survey submission for each unique participant in this dataset. Given that it took time for many people to understand the gravity of COVID-19, along with the spread of information on best practices, these later surveys are more likely to be representative of how these residents are carrying themselves today.
+
+The first step in these methods will be addressing the missing data. In order to fill in the missing predictor variables, I used a multiple imputation approach on the available demographic data with the *mice* package. This uses multiple linear and logistic regression to populate variables with missing data. An unfortunate limitation with this approach is that it makes the assumption that the data is missing at random, which could be a stretch as it appears to be missing not at random. However, one possible way to further examine the reliability of these estimates would be to conduct sensitivity analysis to the imputation approach [[15]][Bibliography]. By conducting multiple iterations of imputation, it is possible to understand the uncertainity with regards to our imputation method. For the following models, I conducted 5 iterations of missing data imputation and compared the results of the final models to these instances. For each model, I examined a confusion matrix and examined binned residual plots.
+
+To address the first goal in this study, I created a weighted logistic regression model that used *Q18..College.Degree* and *Q19.20..Race...Ethnicity* to predict the likelihood of *ESDA* and conducted forward selection with a BIC criterion. To validate the variable selection results, I also conducted backwards selection with a full model of all of the demographic predictors and performed lasso regression.
+
+To address the second goal of this case study, I added *trump_approval_score* as a predictor to the final model from the first goal and examined its relationship with *ESDA*. Additionally, I examined possible interaction effects between *trump_approval_score* and any significant demographic predictors from the previous model.
+
+Finally, I explored a mixed effects model that used a random intercept for county. This was motivated by the fact that the counties in NC varied greatly in their response and adherence to social distancing measures [[14]][Bibliography]. Given that a county also often captures information regarding common demographics and political views, it may be able to substitute for other variables that are more expensive or difficult to collect on NC residents. Due to limitations of the county variable, it was infeasible to perform other validation techniques, such as cross validation. However, prediction and/or estimating the test error of these models is not a goal of this case study.
+
+# Preliminary Results
+
+For each of the following models, please reference Iterations 2-5 in the Appendix to see how the models changed across different imputation iterations.
+
+## Demographics Model
+
+$$
+\begin{aligned}
+log(\frac{P_{i}(Adhere)}{1 - P_{i}(Adhere)}) = \beta_0 + \beta_1 * Q18.College_{i} + \Sigma_{k \in S}\beta_{k}I(Race/Ethnicity = Race/Ethnicity_{ik}) + \epsilon_{i} \\
+S = \{Other, Asian, Black, Hispanic/Latino\}
+\end{aligned}
+$$
+
+```{r Basic Stepwise Logistic Regression Model, fig.align="left",warning=FALSE,echo=FALSE}
+covid.df.regression <- covid.df[,c("Social.Distancing.Adherence",
+                                   "DEMOGRAPHICS...GENDER",
+                                   "Q4..Number.of.People.in.HH",
+                                   "Q5..Children.in.HH", 
+                                   "Q18..College.Degree", 
+                                   "Q19.20..Race...Ethnicity", 
+                                   "week")]
+start.mod <- glm(Social.Distancing.Adherence ~ Q18..College.Degree + Q19.20..Race...Ethnicity,
+                family=binomial, 
+                data=covid.df.regression, 
+                weights=covid.df$weight)
+
+
+step.mod <- stepAIC(start.mod, direction = "forward", trace = FALSE, weights=covid.df$weight)
+
+step.mod.results = data.frame(Estimates=summary(step.mod)$coefficients[, 1], 
+                              Std.Err=summary(step.mod)$coefficients[, 2], 
+                              P.Value=summary(step.mod)$coefficients[, 4])
+
+step.mod.formula <- as.character(formula(step.mod))
+pander(step.mod.results, caption = "Demographic Stepwise Model")
+
+threshold <- 0.5
+step.mod.diagnostics <- augment(step.mod, type.predict = "response")
+step.mod.diagnostics$predictions <- ifelse(step.mod.diagnostics$.fitted > threshold, TRUE, FALSE)
+```
+
+I began with a weighted logistic regression model using only *Q18..College.Degree* and *Q19.20..Race...Ethnicity*. Table 2 shows the outcome of forward selection with BIC from this starting model, which was validated with backwards stepwise-selection from the full model (Table 7 in the Appendix) and lasso regression (Table 8 in the Appendix). Holding *Race...Ethnicity* constant, we are 95% confident that the likelihood an NC resident is social distancing multiplies by a factor between `r round(exp(0.5149 - 1.96 * 0.05596),3)` and `r round(exp(0.5149 + 1.96 * 0.05596),3)` when they have a college degree versus not having one. Among residents with the same  *College.Degree* status, we are 95% confident that the likelihood a Hispanic/Latino resident is social distancing is between `r round(exp(0.4264 - 1.96 * 0.1093),3)` and `r round(exp(0.4264 + 1.96 * 0.1093),3)` times greater than a White resident. Additionally, holding *College.Degree* status again, we are 95% confident that the likelihood an Asian NC resident is social distancing is between `r round(exp(0.4367 - 1.96 * 0.2136),3)` and `r round(exp(0.4367 + 1.96 * 0.2136),3)` times greater than a White resident. These results were consistent across the different imputation iterations, which can be found in Tables 9, 12, 15, and 18 in the Appendix.
+
+The predictive power of this model is virtually nonexistent, and there appears to be many other sources of variation this model failed to capture. The most prominent issue of this model is that it predicts that every participant in this study is social distancing. This is likely due to the class imbalance of social distancing adherence. Some possible considerations to improve this model would be to incorporate average salary or whether the participant themselves is going to work in person (neither of these questions were asked in the survey). The confusion matrix and binned residual plot can be found in the Model Addendum section of the Appendix. Due to the nature of this resulting model, cross validation isn't useful for estimating test error.
+
+## Trump Approval and Demographics Model
+
+$$
+\begin{aligned}
+log(\frac{P_{i}(Adhere)}{1 - P_{i}(Adhere)}) = \beta_0 + \beta_1 * Q18.College_{i} + \Sigma_{k \in S}\beta_{k}I(Race/Ethnicity = Race/Ethnicity_{ik}) + \\
+\Sigma_{m \in T}\beta_{m}I(Trump.Score = Trump.Score_{im}) + \epsilon_{i} \\
+S = \{Other, Asian, Black, Hispanic/Latino\}, T = \{L1,L2,L3,L4,L5\}
+\end{aligned}
+$$
+The results and diagnostics of this model can be found in Table 4 in the Appendix. The results of this model indicate that after accounting for *College.Degree* status and *Race/Ethnicity* identity, *trump_approve_score* was not significant. This was inconsistent across the different imputation iterations. For example, for iterations 3 and 4, we can see that the highest approval level had a significant negative estimated slope (see Tables 13 and 16 in the Appendix). The estimates for *Q18..College.Degree* and *Q19.20..Race...Ethnicity* were approximately the same as the previous model. This is likely due to the uncertainty resulting for the missing data imputation. 
+
+Similar to the previous model, the predictive power of this model is virtually nonexistent, and there appears to be many other sources of variation this model failed to capture. This model also predicts that every participant in this study is social distancing.
+
+## Random County Intercept Model
+
+$$
+\begin{aligned}
+log(\frac{P_{ij}(Adhere)}{1 - P_{ij}(Adhere)}) = \beta_0 +  \alpha_j + \beta_1 * Q18.College_{ij} + \Sigma_{k \in S}\beta_{k}I(Race/Ethnicity = Race/Ethnicity_{ijk}) + \\
+S = \{Other, Asian, Black, Hispanic/Latino\}
+\end{aligned}
+$$
+
+```{r Random Intercept, fig.align = "left",warning=FALSE,echo=FALSE}
+covid.df.county <- covid.df[!is.na(covid.df$county_name), ]
+county.sparse.mod <- glmer(Social.Distancing.Adherence ~ Q18..College.Degree + Q19.20..Race...Ethnicity + (1|county_name),
+                    data=covid.df.county,
+                    family=binomial,
+                    weights=weight)
+results <- data.frame(VarCorr(county.sparse.mod))
+random.effects.results <- data.frame("Intercept"=c(round(results[1,4],3)),"Std.Dev"=c(round(results[1,5],3)))
+
+rand.county.mod.results = data.frame(Estimates=summary(county.sparse.mod)$coefficients[, 1], 
+                              Std.Err=summary(county.sparse.mod)$coefficients[, 2], 
+                              P.Value=summary(county.sparse.mod)$coefficients[, 4])
+pander(rand.county.mod.results, caption = "Random County Effects Model")
+
+
+```
+
+There are significant limitations to this model. Firstly, county is missing from 1710 participants, and missing data imputation is nearly infeasible given there are over 100 counties represented in this dataset. Therefore, this model was only based on observations with a county variable. Regardless, after accounting for county among observations with this predictor, we see a similar results for *Q18..College.Degree* (the estimate is captured by the previous model's slope estimate). For *Q19.20..Race...Ethnicity*, the coefficient estimates quite different from the previous models. In contrast to the previous model, this model estimates that Black NC residents are between `r round(exp(-0.4526 - 1.96 * 0.09707),3)` and `r round(exp(-0.4526 + 1.96 * 0.09707),3)` times less likely to adhere to social distancing than White NC residents in the same county. Finally, trump approval score was insignificant in this model, and consistently insignificant across the different imputations. Considering that this model used 1710 fewer observations, these estimates are probably unreliable. Another reason these estimates are unreliable is that the random effect due to county was not significant, yet significantly altered the slopes for *Q19.20..Race...Ethnicity*. The intercept variance for county was estimated to be centered around `r random.effects.results[1,1]` with a standard deviation of `r random.effects.results[1,2]`.
+
+```{r Random Intercept Predictions CF Matrix, fig.width = 3.2, fig.height = 3.2, fig.align = "center", warning=FALSE,echo=FALSE}
+threshold <- 0.5
+rand.county.predictions = c()
+for (i in 1:nrow(covid.df.county)){
+  rand.county.predictions = c(rand.county.predictions,predict(county.sparse.mod, covid.df.county[i,]))
+}
+covid.df.county$predictions <- ifelse(rand.county.predictions > threshold,TRUE,FALSE)
+covid.df.county$Social.Distancing.Adherence <- as.factor(covid.df.county$Social.Distancing.Adherence)
+covid.df.county$predictions <- as.factor(covid.df.county$predictions)
+plot_confusion_matrix(confusion_matrix(covid.df.county$predictions,covid.df.county$Social.Distancing.Adherence))
+```
+
+Similar to the two previous models, the predictive power of this model is also rather poor. While this model fortunately does not predict every NC resident as adhering to social distancing measures, it appears to have a similar issue of failing to correctly classify people who are not social distancing. Similar to the previous models, there appears to be unexplained variance in people who fail to socially distance. This is likely due to the fact that people are generally either failing to socially distance by choice (i.e. spending time in large groups without necessity) or by necessity (in-person job). This trend is difficult to capture using demographic data alone. The binned residual plot can be found in the Model Addendum section of the Appendix.
+
+# Discussion
+
+To address the first goal of this case study, I generated a logistic regression model and examined the following predictors *age*, *Demographics - Gender*, *Q4..Number.of.People.in.HH*,  *Q18..College.Degree*, *Q19.20..Race...Ethnicity*, *Week*, and *county_name*. We found that only *Q18..College.Degree* *Q19.20..Race...Ethnicity* were significant in predicting the likelihood of social distance adherence. This variable selection was consistent with various other techniques, including backwards selection and lasso regression. Additionally, the variable and coefficient estimates were consistent across different iterations of mice imputation.
+
+To address the second goal of this case study, I added estimated *trump_approval_score* to the previous model and observed it was significant across two of the five different iterations of imputations. The reliablity of this variable, as mentioned before, was questionable, as it was estimated from voter registration data. As discussed in the literature review, other studies have discovered that conservative areas are less likely to take socially distancing seriously, which are likely more reliable than the results of this model.
+
+Finally, we also considered a mixed effects model that used a random intercept for county. Because of the data limitations of this model, the reliability of the results are unclear.
+
+# Looking Ahead
+
+There were several issues that limited the models' ability to fully answer the questions present in this analysis. Firstly, there is more work that can be done to evaluate other missing data procedures. As mentioned before, the mice package assumes the data is missing at random, and we have evidence to believe otherwise (see Table 21 in Appendix), as demographic predictors were significant when predicting survey completion. One approach that I originally considered was kNN imputation, however this is a highly computationally expensive approach. 
+
+Another improvement to this analysis would be conducting further sensitivity analysis to the way in which the social distance adherence variable was generated. Despite limiting the breakoff questions that would lend to a participant being classified as not social distancing, most of the values with a missing response were classified as failing to social distance. In the next report, I intend to conduct sensitivity analysis to this decision by further limiting the breakoff questions that cause this and comparing the resulting models. The drawback of doing this however, is using missing at random approach imputations for the response.
+
+\newpage
+
+# Appendix
+
+## Model Addendum
+
+### Diagnostics of Demographic Only Model
+
+```{r Diagnostics of Demographic Only Model, warning=FALSE,echo=FALSE}
+plot_confusion_matrix(confusion_matrix(step.mod.diagnostics$predictions,covid.df.regression$Social.Distancing.Adherence))
+```
+
+```{r Binned Residual from Demographic Model, warning=FALSE,echo=FALSE}
+arm::binnedplot(x=step.mod.diagnostics$.fitted,y=step.mod.diagnostics$.resid,
+                xlab="Predicted Probabilities", 
+                main = "Figure 4: Binned Residual vs. Predicted Probabilities",
+                cex.main=0.9, cex.lab=0.8)
+```
+
+The confusion matrices and binned residual plots show significant issues with consistently predicting that NC residents are social distancing.
+
+### Trump and Demographic Model and Diagnostics
+
+```{r Trump Model, warning=FALSE,echo=FALSE}
+covid.df.regression <- covid.df[,c("Social.Distancing.Adherence",
+                                   "DEMOGRAPHICS...GENDER",
+                                   "Q4..Number.of.People.in.HH",
+                                   "Q5..Children.in.HH", 
+                                   "Q18..College.Degree", 
+                                   "Q19.20..Race...Ethnicity", 
+                                   "week",
+                                   "trump_approve_score")]
+
+trump.mod.predictors <- paste0(step.mod.formula[3], " + trump_approve_score")
+trump.mod.formula <- as.formula(paste(step.mod.formula[2], trump.mod.predictors, sep = " ~ "))
+
+trump.mod <- glm(trump.mod.formula,
+                family=binomial, 
+                data=covid.df.regression, 
+                weights=covid.df$weight)
+
+trump.mod.results = data.frame(Estimates=summary(trump.mod)$coefficients[, 1], 
+                              Std.Err=summary(trump.mod)$coefficients[, 2], 
+                              P.Value=summary(trump.mod)$coefficients[, 4])
+
+pander(trump.mod.results, caption = "Trump Approval Score Model")
+
+trump.mod.diagnostics <- augment(trump.mod, type.predict = "response")
+trump.mod.diagnostics$predictions <- ifelse(trump.mod.diagnostics$.fitted > threshold, TRUE, FALSE)
+
+plot_confusion_matrix(confusion_matrix(trump.mod.diagnostics$predictions,covid.df.regression$Social.Distancing.Adherence))
+```
+
+```{r Binned Residual from Trump Model, warning=FALSE,echo=FALSE}
+arm::binnedplot(x=trump.mod.diagnostics$.fitted,y=trump.mod.diagnostics$.resid,
+                xlab="Predicted Probabilities", 
+                ylab="Binned Residuals",
+                main = "Demographic & Trump Model",
+                cex.main=0.9, cex.lab=0.8)
+```
+
+As expected, the confusion matrices and binned residual plots show significant issues with consistently predicting that NC residents are social distancing.
+
+### County Residual Plot
+
+```{r County Random Effects Model Residual Plot, warning=FALSE,echo=FALSE}
+arm::binnedplot(x=rand.county.predictions,y=residuals(county.sparse.mod, "pearson", scaled = TRUE),
+                xlab="Predicted Probabilities", 
+                ylab="Binned Residuals",
+                main = "Random County Intercept Model",
+                cex.main=0.9, cex.lab=0.8)
+```
+
+The residual plot here appears to be relatively scattered about the 0 line, with some slight curvature for lower predicted probabilities.
+
+## Tables
+
+```{r Data Dictionary, echo=F}
+data_dict <- data.frame(Metric = c(rep("Q6. Non-HH Face to Face Count", 2), 
+                                          rep("Q7. Six Feet Away? (If Q6 > 0)", 3), 
+                                          rep("Q1. Health Quality", 1), 
+                                          rep("Q2. Age in years", 1),
+                                          rep("Q3. Demographics - Gender", 1), 
+                                          rep("Q4. Number of People in HH", 2), 
+                                          rep("Q5. Kids in HH", 1), 
+                                          rep("Q8. HH Member Going to Work", 2), 
+                                          rep("Q9. Kids Interacting w. Other Kids", 3),
+                                      rep("Q10. Times in Group > 20 in Last Week", 2),
+                                      rep("Q11. Within 10 Feet",3),
+                                      rep("Q12. Handwashing Count", 2),
+                                      rep("Q13. Currently Social Distancing?", 2),
+                                      rep("Q14. Currently Symptomatic?", 2),
+                                      rep("Q15. Likelihood of COVID-19", 2),
+                                      rep("Q16. NC Response to COVID-19",2),
+                                      rep("Q17. Changes to Routine",2),
+                                      rep("Q18. College Degree",2),
+                                      rep("Q19. Latino",3),
+                                      rep("Q20. Race",2),
+                                      rep("trump approve score",1),
+                                      rep("week",1)),
+                               Description = linebreak(c("Number of non-HH interactions", "within the past 24 hours", "If answer to question 6 > 0,", "the number of those interactions", "that were greater than 6 feet", "Self-reported rating of health", "Age in years", "Biological sex of participant", "Number of people living in HH,", "including participant", "Number of children < 18 in HH", "Whether or not there is a HH", "member going to work in person", "If answer to question 5 > 0,", "whether the children are playing", "with other children", "Number of times participant",  "was with +20 people in past week", "Whether within 10 ft.",  "of family, friends, coworkers,","clients, or others today", "Number of times participant", "washed hands in past 24 hours", "Self-report on whether", "participant is social distancing", "Whether participant is currently", "experiencing symptoms", "Participant's belief on if", "they will get COVID-19", "Perspective on NC's", "response to COVID-19", "Whether participant has", "made large changes to routine", "Whether participant earned",  "a college degree", "Whether the participant comes", "from a Hispanic, Latino, or", "Spanish-speaking background", "If answer to question 19", "was no, participant's race", "Predicted Trump approval score", "Week number")),
+                               Values = c(rep("0,1,2,...,9+", 2), 
+                                          rep("NA,0,1,2,...,9+", 3), 
+                                          rep("Poor, Fair, Good, Very Good", 1), 
+                                          rep(">= 18 years", 1),
+                                          rep("Female, Male", 1), 
+                                          rep("0,1,2,...,9+", 2), 
+                                          rep("0,1,2,3+", 1), 
+                                          rep("Yes, No, Unsure", 2), 
+                                          rep("NA, Yes, No, Unsure", 3),
+                                      rep("0,1,2,...,9+", 2),
+                                      rep("Yes, No", 3),
+                                      rep("0,1,2,...,9+", 2),
+                                      rep("Yes, No", 2),
+                                      rep("Yes, No, Unsure", 2),
+                                      rep("High, Low, Unsure", 2),
+                                      "Underest., Appropriate,", "Overrest.",
+                                      rep("No, Small, Large",2),
+                                      rep("Earned, not Earned",2),
+                                      rep("Yes, No",3),
+                                      rep("White, Black, Asian, Other",2),
+                                      rep("1,2,3,4,5",1),
+                                      rep("1,2,3,4,6",1)))
+kable(data_dict, escape=F, booktabs = T, align = "lll", caption = "Data Dictionary") %>%
+  kable_styling(latex_options = c("hold_position")) %>% 
+  group_rows(index = c("Used in Transformed Response Variable" = 5, "Predictor Variables and other Survey Questions" = 37)) %>%
+  column_spec(1, bold=T) %>%
+  collapse_rows(columns = 1:3, latex_hline = "major", valign = "middle")
+```
+
+\newpage
+
+```{r Breakoff Reasons, echo=F}
+break_dict <- data.frame(Metric = c(rep("Q6. Non-HH Face to Face Count", 1),
+                                          rep("Q7. Six Feet Away? (If Q6 > 0)", 1),
+                                          rep("Q1. Health Quality", 1),
+                                          rep("Q2. Age in years", 1),
+                                          rep("Q3. Demographics - Gender", 1),
+                                          rep("Q4. Number of People in HH", 1),
+                                          rep("Q5. Kids in HH", 1),
+                                          rep("Q8. HH Member Going to Work", 1),
+                                          rep("Q9. Kids Interacting w. Other Kids", 1),
+                                      rep("Q10. Times in Group > 20 in Last Week", 1),
+                                      rep("Q11a. Within 10 Feet of Family",1),
+                                      rep("Q11b. Within 10 Feet of Friends",1),
+                                      rep("Q11c. Within 10 Feet of Co-workers",1),
+                                      rep("Q11d. Within 10 Feet of Clients",1),
+                                      rep("Q11e. Within 10 Feet of Other",1),
+                                      rep("Q12. Handwashing Count", 1),
+                                      rep("Q13. Currently Social Distancing?", 1),
+                                      rep("Q14. Currently Symptomatic?", 1),
+                                      rep("Q15. Likelihood of COVID-19", 1),
+                                      rep("Q16. NC Response to COVID-19",1),
+                                      rep("Q17. Changes to Routine",1),
+                                      rep("Q18. College Degree",1),
+                                      rep("Q19. Latino",1),
+                                      rep("Q20. Race",1),
+                                      rep("trump approve score",1),
+                                      rep("week",1)),
+                               Reason = linebreak(c("Sensitivity",
+                                                    "Sensitivity",
+                                                    "No Breakoffs",
+                                                    "No Breakoffs",
+                                                    "No Breakoffs",
+                                                    "Privacy",
+                                                    "Privacy",
+                                                    "Privacy",
+                                                    "Privacy*",
+                                                    "Sensitivity",
+                                                    "Sensitivity",
+                                                    "Sensitivity",
+                                                    "Sensitivity",
+                                                    "Sensitivity",
+                                                    "Sensitivity",
+                                                    "Unclear",
+                                                    "Sensitivity",
+                                                    "Sensitivity",
+                                                    "Unclear",
+                                                    "Unclear",
+                                                    "Sensitivity",
+                                                    "Sensitivity",
+                                                    "No Breakoffs",
+                                                    "No Breakoffs",
+                                                    "No Breakoffs",
+                                                    "No Breakoffs")),
+                         Count = linebreak(c("268", 
+                                             "114",
+                                             "0",
+                                             "0",
+                                             "0",
+                                             "395",
+                                             "157",
+                                             "56",
+                                             "55",
+                                             "198",
+                                             "58",
+                                             "228",
+                                             "58",
+                                             "57",
+                                             "31",
+                                             "24",
+                                             "25",
+                                             "22",
+                                             "16",
+                                             "10",
+                                             "33",
+                                             "14",
+                                             "0",
+                                             "0",
+                                             "0",
+                                             "0")))
+kable(break_dict, escape=F, booktabs = T, align = "ll", caption = "Potential Breakoff Explanations") %>%
+  kable_styling(latex_options = c("hold_position")) %>%
+  group_rows(index = c("Used in Transformed Response Variable" = 2, "Predictor Variables and other Survey Questions" = 24)) %>%
+  column_spec(1, bold=T) %>%
+  collapse_rows(columns = 1, latex_hline = "major", valign = "middle")
+```
+
+In Table 6, I have labeled each variable of concern with a potential motivation for breakoff to assist in my missing data imputation methods. Count signifies the number of times that question was the breakoff point, or the first question a participant who didn't complete the survey chose not to respond to. For variables categorized as *None Breakoffs*, the question was never a breakoff point for any participant in the final dataset. For variables categorized with *Sensitivity* issues, I labeled these respondents as failing to follow social distancing guidelines under the assumption they are avoiding the question because they have violated that standard. For variables categorized with *Privacy* or *Unclear* issues that are involved in this case study, I have used mulitple linear or logistic regression to populate these values. I will also note here that question 9 may be related to violations for social distancing rules and therefore considered as a *Sensitivity* issue. However, this decison may also be due to different school policies or working parents who have no choice but to place their kids in daycare. 
+
+```{r Full Model Backwards, fig.height=3, warning=FALSE, echo=FALSE}
+full.mod <- glm(Social.Distancing.Adherence ~ .,
+                family=binomial, 
+                data=covid.df.regression, 
+                weights=covid.df$weight)
+back.mod <- stepAIC(full.mod, direction = "backward", trace = FALSE, weights=covid.df$weight)
+
+step.mod.results = data.frame(Estimates=summary(back.mod)$coefficients[, 1], 
+                              Std.Err=summary(back.mod)$coefficients[, 2], 
+                              P.Value=summary(back.mod)$coefficients[, 4])
+
+pander(step.mod.results, caption="Backwards Stepwise From Full Model")
+```
+
+```{r Lasso Demographic Model, echo=FALSE}
+x <- model.matrix(Social.Distancing.Adherence~.,covid.df.regression)[,-1]
+y <- covid.df.regression$Social.Distancing.Adherence
+# grid of values for lambda param
+grid <- 10^seq(10, -2, length = 100)
+lasso.mod <- glmnet(x, as.factor(y), family = "binomial",alpha = 1, lambda = grid)
+cv.out <- cv.glmnet(x, as.factor(y), family = "binomial",alpha = 1)
+best.lam <- cv.out$lambda.min
+pander(as.matrix(predict(lasso.mod, type = 'coefficients', s = best.lam)), caption="Lasso Regression Variable Selection")
+```
+
+From the above results of the lasso regression, we can see that only *Q5..Children.in.HH*  and *Q19.20..Race...Ethnicity* end up with non-zero parameters. This agrees with our exploratory data analysis and agrees with our stepwise selection results.
+
+## Sensitivity to Imputation
+
+### Iteration 2
+
+```{r Iteration 2 Demographics, warning=FALSE,echo=FALSE}
+covid.df <- complete.covid.df[[2]]
+covid.df$Q19.20..Race...Ethnicity <- as.factor(covid.df$Q19.20..Race...Ethnicity)
+covid.df$Q19.20..Race...Ethnicity <- relevel(covid.df$Q19.20..Race...Ethnicity, ref="White")
+covid.df$trump_approve_score <- as.factor(covid.df$trump_approve_score)
+covid.df$week <- as.factor(covid.df$week)
+covid.df$Q5..Children.in.HH <- as.factor(covid.df$Q5..Children.in.HH)
+covid.df.regression <- covid.df[,c("Social.Distancing.Adherence",
+                                   "DEMOGRAPHICS...GENDER",
+                                   "Q4..Number.of.People.in.HH",
+                                   "Q5..Children.in.HH", 
+                                   "Q18..College.Degree", 
+                                   "Q19.20..Race...Ethnicity", 
+                                   "week")]
+start.mod <- glm(Social.Distancing.Adherence ~ Q18..College.Degree + Q19.20..Race...Ethnicity,
+                family=binomial, 
+                data=covid.df.regression, 
+                weights=covid.df$weight)
+
+step.mod <- stepAIC(start.mod, direction = "forward", trace = FALSE, weights=covid.df$weight)
+step.mod.formula <- as.character(formula(step.mod))
+
+step.mod.results = data.frame(Estimates=summary(step.mod)$coefficients[, 1], 
+                              Std.Err=summary(step.mod)$coefficients[, 2], 
+                              P.Value=summary(step.mod)$coefficients[, 4])
+
+pander(step.mod.results, caption = "Demographic Stepwise Model - Iteration 2")
+```
+
+```{r Iteration 2 Trump, warning=FALSE,echo=FALSE}
+covid.df.regression <- covid.df[,c("Social.Distancing.Adherence",
+                                   "DEMOGRAPHICS...GENDER",
+                                   "Q4..Number.of.People.in.HH",
+                                   "Q5..Children.in.HH", 
+                                   "Q18..College.Degree", 
+                                   "Q19.20..Race...Ethnicity", 
+                                   "week",
+                                   "trump_approve_score")]
+trump.mod.predictors <- paste0(step.mod.formula[3], " + trump_approve_score")
+trump.mod.formula <- as.formula(paste(step.mod.formula[2], trump.mod.predictors, sep = " ~ "))
+
+trump.mod <- glm(trump.mod.formula,
+                family=binomial, 
+                data=covid.df.regression, 
+                weights=covid.df$weight)
+
+trump.mod.results = data.frame(Estimates=summary(trump.mod)$coefficients[, 1], 
+                              Std.Err=summary(trump.mod)$coefficients[, 2], 
+                              P.Value=summary(trump.mod)$coefficients[, 4])
+
+pander(trump.mod.results, caption = "Trump Approval Score Model - Iteration 2")
+```
+
+
+```{r Iteration 2 Random Intercept, warning=FALSE,echo=FALSE}
+covid.df.county <- covid.df[!is.na(covid.df$county_name), ]
+county.sparse.mod <- glmer(Social.Distancing.Adherence ~ Q18..College.Degree + Q19.20..Race...Ethnicity + (1|county_name),
+                    data=covid.df.county,
+                    family=binomial,
+                    weights=weight)
+results <- data.frame(VarCorr(county.sparse.mod))
+
+rand.county.mod.results = data.frame(Estimates=summary(county.sparse.mod)$coefficients[, 1], 
+                              Std.Err=summary(county.sparse.mod)$coefficients[, 2], 
+                              P.Value=summary(county.sparse.mod)$coefficients[, 4])
+pander(rand.county.mod.results, caption = "Iteration 2 - Random County Effects Model")
+```
+
+### Iteration 3
+
+```{r Iteration 3 Demographics, warning=FALSE,echo=FALSE}
+covid.df <- complete.covid.df[[3]]
+covid.df$Q19.20..Race...Ethnicity <- as.factor(covid.df$Q19.20..Race...Ethnicity)
+covid.df$Q19.20..Race...Ethnicity <- relevel(covid.df$Q19.20..Race...Ethnicity, ref="White")
+covid.df$trump_approve_score <- as.factor(covid.df$trump_approve_score)
+covid.df$week <- as.factor(covid.df$week)
+covid.df$Q5..Children.in.HH <- as.factor(covid.df$Q5..Children.in.HH)
+covid.df.regression <- covid.df[,c("Social.Distancing.Adherence",
+                                   "DEMOGRAPHICS...GENDER",
+                                   "Q4..Number.of.People.in.HH",
+                                   "Q5..Children.in.HH", 
+                                   "Q18..College.Degree", 
+                                   "Q19.20..Race...Ethnicity", 
+                                   "week")]
+start.mod <- glm(Social.Distancing.Adherence ~ Q18..College.Degree + Q19.20..Race...Ethnicity,
+                family=binomial, 
+                data=covid.df.regression, 
+                weights=covid.df$weight)
+
+step.mod <- stepAIC(start.mod, direction = "forward", trace = FALSE, weights=covid.df$weight)
+step.mod.formula <- as.character(formula(step.mod))
+step.mod.results = data.frame(Estimates=summary(step.mod)$coefficients[, 1], 
+                              Std.Err=summary(step.mod)$coefficients[, 2], 
+                              P.Value=summary(step.mod)$coefficients[, 4])
+
+pander(step.mod.results, caption = "Demographic Stepwise Model - Iteration 3")
+```
+
+```{r Iteration 3 Trump, warning=FALSE,echo=FALSE}
+covid.df.regression <- covid.df[,c("Social.Distancing.Adherence",
+                                   "DEMOGRAPHICS...GENDER",
+                                   "Q4..Number.of.People.in.HH",
+                                   "Q5..Children.in.HH", 
+                                   "Q18..College.Degree", 
+                                   "Q19.20..Race...Ethnicity", 
+                                   "week",
+                                   "trump_approve_score")]
+trump.mod.predictors <- paste0(step.mod.formula[3], " + trump_approve_score")
+trump.mod.formula <- as.formula(paste(step.mod.formula[2], trump.mod.predictors, sep = " ~ "))
+
+trump.mod <- glm(trump.mod.formula,
+                family=binomial, 
+                data=covid.df.regression, 
+                weights=covid.df$weight)
+trump.mod.results = data.frame(Estimates=summary(trump.mod)$coefficients[, 1], 
+                              Std.Err=summary(trump.mod)$coefficients[, 2], 
+                              P.Value=summary(trump.mod)$coefficients[, 4])
+
+pander(trump.mod.results, caption = "Trump Approval Score Model - Iteration 3")
+```
+
+```{r Iteration 3 Random Intercept, warning=FALSE,echo=FALSE}
+covid.df.county <- covid.df[!is.na(covid.df$county_name), ]
+county.sparse.mod <- glmer(Social.Distancing.Adherence ~ Q18..College.Degree + Q19.20..Race...Ethnicity + (1|county_name),
+                    data=covid.df.county,
+                    family=binomial,
+                    weights=weight)
+results <- data.frame(VarCorr(county.sparse.mod))
+random.effects.results <- data.frame("Intercept"=c(round(results[1,4],3)),"Std.Dev"=c(round(results[1,5],3)))
+
+rand.county.mod.results = data.frame(Estimates=summary(county.sparse.mod)$coefficients[, 1], 
+                              Std.Err=summary(county.sparse.mod)$coefficients[, 2], 
+                              P.Value=summary(county.sparse.mod)$coefficients[, 4])
+pander(rand.county.mod.results, caption = "Iteration 3 - Random County Effects Model")
+```
+
+### Iteration 4
+
+```{r Iteration 4 Demographics, warning=FALSE,echo=FALSE}
+covid.df <- complete.covid.df[[4]]
+
+covid.df$Q19.20..Race...Ethnicity <- as.factor(covid.df$Q19.20..Race...Ethnicity)
+covid.df$week <- as.factor(covid.df$week)
+covid.df$Q5..Children.in.HH <- as.factor(covid.df$Q5..Children.in.HH)
+covid.df$Q19.20..Race...Ethnicity <- relevel(covid.df$Q19.20..Race...Ethnicity, ref="White")
+covid.df$trump_approve_score <- as.factor(covid.df$trump_approve_score)
+covid.df.regression <- covid.df[,c("Social.Distancing.Adherence",
+                                   "DEMOGRAPHICS...GENDER",
+                                   "Q4..Number.of.People.in.HH",
+                                   "Q5..Children.in.HH", 
+                                   "Q18..College.Degree", 
+                                   "Q19.20..Race...Ethnicity", 
+                                   "week")]
+start.mod <- glm(Social.Distancing.Adherence ~ Q18..College.Degree + Q19.20..Race...Ethnicity,
+                family=binomial, 
+                data=covid.df.regression, 
+                weights=covid.df$weight)
+
+step.mod <- stepAIC(start.mod, direction = "forward", trace = FALSE, weights=covid.df$weight)
+step.mod.formula <- as.character(formula(step.mod))
+step.mod.results = data.frame(Estimates=summary(step.mod)$coefficients[, 1], 
+                              Std.Err=summary(step.mod)$coefficients[, 2], 
+                              P.Value=summary(step.mod)$coefficients[, 4])
+
+pander(step.mod.results, caption = "Demographic Stepwise Model - Iteration 4")
+```
+
+```{r Iteration 4 Trump, warning=FALSE,echo=FALSE}
+covid.df.regression <- covid.df[,c("Social.Distancing.Adherence",
+                                   "DEMOGRAPHICS...GENDER",
+                                   "Q4..Number.of.People.in.HH",
+                                   "Q5..Children.in.HH", 
+                                   "Q18..College.Degree", 
+                                   "Q19.20..Race...Ethnicity", 
+                                   "week",
+                                   "trump_approve_score")]
+trump.mod.predictors <- paste0(step.mod.formula[3], " + trump_approve_score")
+trump.mod.formula <- as.formula(paste(step.mod.formula[2], trump.mod.predictors, sep = " ~ "))
+
+trump.mod <- glm(trump.mod.formula,
+                family=binomial, 
+                data=covid.df.regression, 
+                weights=covid.df$weight)
+trump.mod.results = data.frame(Estimates=summary(trump.mod)$coefficients[, 1], 
+                              Std.Err=summary(trump.mod)$coefficients[, 2], 
+                              P.Value=summary(trump.mod)$coefficients[, 4])
+
+pander(trump.mod.results, caption = "Trump Approval Score Model - Iteration 4")
+```
+
+```{r Iteration 4 Random Intercept, warning=FALSE,echo=FALSE}
+covid.df.county <- covid.df[!is.na(covid.df$county_name), ]
+county.sparse.mod <- glmer(Social.Distancing.Adherence ~ Q18..College.Degree + Q19.20..Race...Ethnicity + (1|county_name),
+                    data=covid.df.county,
+                    family=binomial,
+                    weights=weight)
+results <- data.frame(VarCorr(county.sparse.mod))
+random.effects.results <- data.frame("Intercept"=c(round(results[1,4],3)),"Std.Dev"=c(round(results[1,5],3)))
+
+rand.county.mod.results = data.frame(Estimates=summary(county.sparse.mod)$coefficients[, 1], 
+                              Std.Err=summary(county.sparse.mod)$coefficients[, 2], 
+                              P.Value=summary(county.sparse.mod)$coefficients[, 4])
+pander(rand.county.mod.results, caption = "Iteration 4 - Random County Effects Model")
+```
+
+### Iteration 5
+
+```{r Iteration 5 Demographics, warning=FALSE,echo=FALSE}
+covid.df <- complete.covid.df[[5]]
+
+covid.df$Q19.20..Race...Ethnicity <- as.factor(covid.df$Q19.20..Race...Ethnicity)
+covid.df$week <- as.factor(covid.df$week)
+covid.df$Q5..Children.in.HH <- as.factor(covid.df$Q5..Children.in.HH)
+covid.df$Q19.20..Race...Ethnicity <- relevel(covid.df$Q19.20..Race...Ethnicity, ref="White")
+covid.df$trump_approve_score <- as.factor(covid.df$trump_approve_score)
+covid.df.regression <- covid.df[,c("Social.Distancing.Adherence",
+                                   "DEMOGRAPHICS...GENDER",
+                                   "Q4..Number.of.People.in.HH",
+                                   "Q5..Children.in.HH", 
+                                   "Q18..College.Degree", 
+                                   "Q19.20..Race...Ethnicity", 
+                                   "week")]
+start.mod <- glm(Social.Distancing.Adherence ~ Q18..College.Degree + Q19.20..Race...Ethnicity,
+                family=binomial, 
+                data=covid.df.regression, 
+                weights=covid.df$weight)
+
+step.mod <- stepAIC(start.mod, direction = "forward", trace = FALSE, weights=covid.df$weight)
+step.mod.formula <- as.character(formula(step.mod))
+step.mod.results = data.frame(Estimates=summary(step.mod)$coefficients[, 1], 
+                              Std.Err=summary(step.mod)$coefficients[, 2], 
+                              P.Value=summary(step.mod)$coefficients[, 4])
+
+pander(step.mod.results, caption = "Demographic Stepwise Model - Iteration 5")
+```
+
+```{r Iteration 5 Trump Continous, warning=FALSE,echo=FALSE}
+covid.df.regression <- covid.df[,c("Social.Distancing.Adherence",
+                                   "DEMOGRAPHICS...GENDER",
+                                   "Q4..Number.of.People.in.HH",
+                                   "Q5..Children.in.HH", 
+                                   "Q18..College.Degree", 
+                                   "Q19.20..Race...Ethnicity", 
+                                   "week",
+                                   "trump_approve_score")]
+
+trump.mod.predictors <- paste0(step.mod.formula[3], " + trump_approve_score")
+trump.mod.formula <- as.formula(paste(step.mod.formula[2], trump.mod.predictors, sep = " ~ "))
+
+trump.mod <- glm(trump.mod.formula,
+                family=binomial, 
+                data=covid.df.regression, 
+                weights=covid.df$weight)
+trump.mod.results = data.frame(Estimates=summary(trump.mod)$coefficients[, 1], 
+                              Std.Err=summary(trump.mod)$coefficients[, 2], 
+                              P.Value=summary(trump.mod)$coefficients[, 4])
+
+pander(trump.mod.results, caption = "Trump Approval Score Model - Iteration 5")
+```
+
+```{r Iteration 5 Random Intercept, warning=FALSE,echo=FALSE}
+covid.df.county <- covid.df[!is.na(covid.df$county_name), ]
+county.sparse.mod <- glmer(Social.Distancing.Adherence ~ Q18..College.Degree + Q19.20..Race...Ethnicity + (1|county_name),
+                    data=covid.df.county,
+                    family=binomial,
+                    weights=weight)
+results <- data.frame(VarCorr(county.sparse.mod))
+random.effects.results <- data.frame("Intercept"=c(round(results[1,4],3)),"Std.Dev"=c(round(results[1,5],3)))
+
+rand.county.mod.results = data.frame(Estimates=summary(county.sparse.mod)$coefficients[, 1], 
+                              Std.Err=summary(county.sparse.mod)$coefficients[, 2], 
+                              P.Value=summary(county.sparse.mod)$coefficients[, 4])
+pander(rand.county.mod.results, caption = "Iteration 5 - Random County Effects Model")
+```
+
+## Survey Completion Model 
+
+```{r Survey Completion Model, warning=FALSE,echo=FALSE}
+covid.df.original$Completed.Survey <- as.character(covid.df.original$Completed.Survey)
+covid.df.original <- covid.df.original %>% mutate(Completed.Survey = case_when(
+          Completed.Survey == "True" ~ "1",
+          Completed.Survey == "False" ~ "0",
+          TRUE ~ Completed.Survey))
+covid.df.original$Completed.Survey <- as.factor(covid.df.original$Completed.Survey)
+completed.mod <- glm(Completed.Survey ~ age + DEMOGRAPHICS...GENDER + Q19.20..Race...Ethnicity, family=binomial, weights=weight, data=covid.df.original)
+
+completed.mod.results = data.frame(Estimates=summary(completed.mod)$coefficients[, 1], 
+                              Std.Err=summary(completed.mod)$coefficients[, 2], 
+                              P.Value=summary(completed.mod)$coefficients[, 4])
+pander(completed.mod.results , caption = "Survey Completion Predictions")
+```
+
+## Plots
+
+```{r Adherence over Perceived Likelihood, fig.width=8, warning=FALSE, echo=FALSE}
+p2 <- ggplot(covid.df) +
+  geom_histogram(aes(x=age, fill=Social.Distancing.Adherence),alpha = 0.6, position = "identity")+
+  labs(x = "Age in Years",
+       title = "Social Distancing Adherence over Age",
+       caption="") + theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 18), legend.position="none")
+
+covid.df$Q4..Number.of.People.in.HH <- as.factor(covid.df$Q4..Number.of.People.in.HH)
+dat <- ddply(covid.df, .(Q4..Number.of.People.in.HH), function(.) {
+    res <- cumsum(prop.table(table(factor(.$Social.Distancing.Adherence)))) # re-factor to use only used levels
+    res2 <- prop.table(table(factor(.$Social.Distancing.Adherence))) # re-factor to use only used levels 
+    data.frame(lab = names(res), y = c(res), lab2 = rev(res2), pos = cumsum(rev(res2)) - 0.5*rev(res2))
+})
+
+p3 <- ggplot(covid.df, aes(x = Q4..Number.of.People.in.HH)) + 
+  geom_bar(aes(fill = Social.Distancing.Adherence), position = 'fill') +
+  geom_text(aes(label = round(lab2.Freq, 2), x = Q4..Number.of.People.in.HH, y = pos.Freq), data = dat) +
+  labs(title = "Number of People in HH",
+         y = "Frequency", 
+         x = "Number of People in HH",
+         fill = "Social Distancing Adherence",
+         caption = "") +
+  theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 12), legend.direction="horizontal") +
+  guides(fill=guide_legend("Adherence"))
+
+
+dat <- ddply(covid.df, .(Q5..Children.in.HH), function(.) {
+    res <- cumsum(prop.table(table(factor(.$Social.Distancing.Adherence)))) # re-factor to use only used levels
+    res2 <- prop.table(table(factor(.$Social.Distancing.Adherence))) # re-factor to use only used levels 
+    data.frame(lab = names(res), y = c(res), lab2 = rev(res2), pos = cumsum(rev(res2)) - 0.5*rev(res2))
+})
+
+p4 <- ggplot(covid.df, aes(x = Q5..Children.in.HH)) + 
+  geom_bar(aes(fill = Social.Distancing.Adherence), position = 'fill') +
+  geom_text(aes(label = round(lab2.Freq, 2), x = Q5..Children.in.HH, y = pos.Freq), data = dat) +
+  labs(title = "Social Distancing Adherence over Children in HH",
+         y = "Frequency", 
+         x = "Children in HH",
+         fill = "Social Distancing Adherence",
+         caption = "") +
+  theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 12), legend.position="none")
+
+dat <- ddply(covid.df, .(DEMOGRAPHICS...GENDER), function(.) {
+    res <- cumsum(prop.table(table(factor(.$Social.Distancing.Adherence)))) # re-factor to use only used levels
+    res2 <- prop.table(table(factor(.$Social.Distancing.Adherence))) # re-factor to use only used levels 
+    data.frame(lab = names(res), y = c(res), lab2 = rev(res2), pos = cumsum(rev(res2)) - 0.5*rev(res2))
+})
+
+p5 <- ggplot(covid.df, aes(x = DEMOGRAPHICS...GENDER)) + 
+  geom_bar(aes(fill = Social.Distancing.Adherence), position = 'fill') +
+  geom_text(aes(label = round(lab2.Freq, 2), x = DEMOGRAPHICS...GENDER, y = pos.Freq), data = dat) +
+  labs(title = "Social Distancing Adherence over Sex",
+         y = "Frequency", 
+         x = "Sex",
+         fill = "Social Distancing Adherence",
+         caption = "") +
+  theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 12), legend.position="none")
+
+
+grid.arrange(arrangeGrob(p2,
+                         p3 + theme(legend.position="none"),
+                         p4,
+                         p5,
+                         nrow=2, top = "Figure 2"),
+             eda.legend, nrow=2,heights=c(10, 1))
+```
+
+Households with only 1 child were shown to have a lower likelihood of *ESDA* relative to others. A possible explanation for this is that younger parents with only 1 child may have a higher likelihood of having jobs that required in-person attendance.
+
+## Breakoff Indices
+
+```{r Missing Data Exploration, echo=FALSE, fig.align='center'}
+kable(sort(table(covid.df$breakoff),decreasing=TRUE), 
+      col.names = c("Variable","Breakoff Frequency"))
+```
+
+## Bibliography
+
+1. Dong E., Du H. & Gardner L. An interactive web-based dashboard to track COVID-19 in real time. Lancet Inf Dis. 20(5):533-534. doi: 10.1016/S1473-3099(20)30120-1
+2. Race for coronavirus vaccine intensifies. (2020, September 12). Retrieved September 13, 2020, from https://abcnews.go.com/GMA/News/video/race-coronavirus-vaccine-intensifies-72968770
+3. Social Distancing, Quarantine, and Isolation. (2020, July 15). Retrieved September 13, 2020, from https://www.cdc.gov/coronavirus/2019-ncov/prevent-getting-sick/social-distancing.html
+4. Leonhardt, D., & Leatherby, L. (2020, August 06). The Unique U.S. Failure to Control the Virus. Retrieved September 13, 2020, from https://www.nytimes.com/2020/08/06/us/coronavirus-us.html
+5. WHO Chief Says 'Politicization' of Pandemic Hurting Global Efforts (2020, June 22). Retrieved September 13, 2020, from https://www.voanews.com/covid-19-pandemic/who-chief-says-politicization-pandemic-hurting-global-efforts
+6. Godoy, M., & Wood, D. (2020, May 30). What Do Coronavirus Racial Disparities Look Like State By State? Retrieved August 26, 2020, from https://www.npr.org/sections/healthshots/2020/05/30/865413079/what-do-coronavirus-racial-disparities-look-like-state-bystate
+7. Allcott, H., Boxell .L., Conway J.,Gentzkow M., Thaler M. & Yang D. (2020, August 6) "Polarization and Public Health: Partisan Differences in Social Distancing during the Coronavirus Pandemic," Journal of Public Economics
+8. Servick, K., Aridi, R., O'Grady, C., Hicks, L. (2020, August 14). How will COVID-19 affect the coming flu season? Scientists struggle for clues. Retrieved August 26, 2020, from https://www.sciencemag.org/news/2020/08/how-will-covid-19-affect-coming-fluseason-scientists-struggle-clues
+9. Weigel, D. & Tierney, L. (2020, August 23). The six political states of North Carolina. Retrieved September 13, 2020, from https://www.washingtonpost.com/graphics/2020/politics/north-carolina-political-geography/
+10. The American Association for Public Opinion Research. 2015. Standard Definitions:Final Dispositions of Case Codes and Outcome Rates for Surveys. 8th edition. AAPOR.
+11. Hess, A. (2020, May 11). The Social-Distancing Shamers Are Watching. Retrieved October 18, 2020, from https://www.nytimes.com/2020/05/11/arts/social-distance-shaming.html
+12. Casey, J. (2020, May 08). Social Shaming in the Era of Social Distancing. Retrieved October 18, 2020, from
+https://www.advocate.com/commentary/2020/5/08/social-shaming-era-social-distancing
+13. Brown, H., Fremstad, S., &amp; Jin Rho, H. (2020, June 08). Racial Inequality Among Workers in Frontline Industries: Black Workers are Overrepresented and Undercompensated. Retrieved October 18, 2020, from https://cepr.net/racial-inequality-among-workers-in-frontline-industries-black-workers-are-overrepresented-and-undercompensated/
+14. Hoban, R. (2020, April 09). Your county social distancing? Click &amp; see. Retrieved October 18, 2020, from https://www.northcarolinahealthnews.org/interactive/is-your-county-making-the-grade-in-social-distancing/
+15. https://statisticalhorizons.com/sensitivity-analysis
+
+
+## Supplementary Links
+1. https://github.com/MIDS-at-Duke/duke-social-distancing-survey/blob/master/SurveyQuestions.pdf
+
+

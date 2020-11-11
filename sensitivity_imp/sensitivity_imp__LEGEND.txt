@@ -1,0 +1,5 @@
+age
+Q5..Children.in.HH
+Q6..Non.HH.Face.to.Face.Count
+Q7..Six.Feet.Away...If.Q6...0.
+Q19.20..Race...Ethnicity

@@ -1,0 +1,9 @@
+age
+DEMOGRAPHICS...GENDER
+Q4..Number.of.People.in.HH
+Q5..Children.in.HH
+Q18..College.Degree
+Q19.20..Race...Ethnicity
+week
+trump_approve_score
+Social.Distancing.Adherence

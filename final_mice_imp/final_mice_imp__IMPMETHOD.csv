@@ -1,0 +1,10 @@
+;x
+age;
+DEMOGRAPHICS...GENDER;
+Q4..Number.of.People.in.HH;pmm
+Q5..Children.in.HH;polyreg
+Q18..College.Degree;logreg
+Q19.20..Race...Ethnicity;
+week;
+trump_approve_score;pmm
+Social.Distancing.Adherence;logreg
