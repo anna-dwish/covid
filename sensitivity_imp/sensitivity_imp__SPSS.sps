@@ -1,8 +1,9 @@
-DATA LIST FILE= "/Users/annadarwish/Desktop/senior/case-studies/covid/sensitivity_imp/sensitivity_imp__SPSS.txt"  free (TAB)
+DATA LIST FILE= "/Users/annadarwish/Desktop/senior/thesis/covid/sensitivity_imp/sensitivity_imp__SPSS.txt"  free (TAB)
    / Imputation_ age Q5..Children.in.HH 
   Q6..Non.HH.Face.to.Face.Count 
   Q7..Six.Feet.Away...If.Q6...0. 
-    Q19.20..Race...Ethnicity (A15) .
+    Q19.20..Race...Ethnicity (A15) 
+  Social.Distancing.Adherence .
 
 
 VARIABLE LABELS
@@ -12,6 +13,7 @@ VARIABLE LABELS
  Q6..Non.HH.Face.to.Face.Count "Q6..Non.HH.Face.to.Face.Count" 
  Q7..Six.Feet.Away...If.Q6...0. "Q7..Six.Feet.Away...If.Q6...0." 
  Q19.20..Race...Ethnicity "Q19.20..Race...Ethnicity" 
+ Social.Distancing.Adherence "Social.Distancing.Adherence" 
  .
 
 VALUE LABELS
