@@ -1,0 +1,9 @@
+beta*
+*.log
+*_cache
+*_files
+.DS_Store
+.Rapp.history
+.Rhistory
+*.pdf
+MNAR_COVID_Scratch_Work.Rmd
