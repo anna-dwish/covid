@@ -1,10 +1,16 @@
 ;x
 age;
+Q1..Health.Quality;
 DEMOGRAPHICS...GENDER;
 Q4..Number.of.People.in.HH;pmm
-Q5..Children.in.HH;polyreg
+Q5..Children.in.HH;pmm
 Q18..College.Degree;logreg
 Q19.20..Race...Ethnicity;
 week;
 trump_approve_score;pmm
 Social.Distancing.Adherence;logreg
+age_race_ethnicity_asian;
+age_race_ethnicity_black;
+age_race_ethnicity_hispanic;
+age_race_ethnicity_other;
+age_race_ethnicity_white;
