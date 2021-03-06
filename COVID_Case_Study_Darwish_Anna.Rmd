@@ -278,6 +278,7 @@ covid.df.missing <- covid.df[,c("age",
 
 covid.df.county <- covid.df[,c("age",
                                "weight",
+                                "DEMOGRAPHICS...GENDER",
                                "Q5..Children.in.HH",
                                "Q19.20..Race...Ethnicity",
                                "Social.Distancing.Adherence",
@@ -351,7 +352,7 @@ for (i in 1:25){
 
 ## Background
 
-As of Sunday, March 4, 2021, there have been over 100 million cases of COVID-19 worldwide and over 2.5 million reported deaths [[1]][Bibliography]. As hospitals and officials race across the world to distribute vaccines [[2]][Bibliography], we have been reminded repeatedly that the best defense against COVID-19 is social distancing [[3]][Bibliography]. Social distancing is defined as "a set of non-pharmaceutical interventions or measures intended to prevent the spread of a contagious disease by maintaining a physical distance between people and reducing the number of times people come into close contact with each other" [[3]][Bibliography]. While many other countries around the world were either grappling with the first spikes in the virus or reinstating measures in response to a second wave, the U.S. came under fire as states began to relax social distancing measures as soon as early May 2020 [[4]][Bibliography]. As of March 2021, parts of the U.S. have begun to relax mask mandates despite professionals, such as CDC Director Dr. Walensky, urging states to continue to observe public health measures [[5]][Bibliography]. Other leaders, including WHO Direction-General Tedros Adhanom Ghebreyesus, have attributed this dichotomy to the "the politicization of the pandemic" and argue that it has "exacerbated [COVID-19]" [[6]][Bibliography]. 
+As of Thursday, March 4, 2021, there have been over 100 million cases of COVID-19 worldwide and over 2.5 million reported deaths [[1]][Bibliography]. As hospitals and officials race across the world to distribute vaccines [[2]][Bibliography], we have been reminded repeatedly that the best defense against COVID-19 is social distancing [[3]][Bibliography]. Social distancing is defined as "a set of non-pharmaceutical interventions or measures intended to prevent the spread of a contagious disease by maintaining a physical distance between people and reducing the number of times people come into close contact with each other" [[3]][Bibliography]. While many other countries around the world were either grappling with the first spikes in the virus or reinstating measures in response to a second wave, the U.S. came under fire as states began to relax social distancing measures as soon as early May 2020 [[4]][Bibliography]. As of March 2021, parts of the U.S. have begun to relax mask mandates despite professionals, such as CDC Director Dr. Walensky, urging states to continue to observe public health measures [[5]][Bibliography]. Other leaders, including WHO Direction-General Tedros Adhanom Ghebreyesus, have attributed this dichotomy to the "the politicization of the pandemic" and argue that it has "exacerbated [COVID-19]" [[6]][Bibliography]. 
 
 Within the U.S., there have been deep divisions between Democrats and Republicans with regards to their perceptions of the severity of the virus, the effectiveness of social distancing, and quality of President Trump's response to COVID-19 [[7]][Bibliography]. Some have argued this may be due to the fact that Democrats tend to occupy more densely populated urban areas and therefore have a stronger personal incentive to socially distance [[8]][Bibliography], However, in a study conducted in early April, researchers found that even after controlling for such factors, partisan gaps in beliefs about the severity of COVID-19 and the importance of social distancing remained statistically and economically significant [[8]][Bibliography].
 
@@ -460,15 +461,14 @@ complete.case.gender.percent <- paste0(100*round(sum(cc.covid.df$DEMOGRAPHICS...
 complete.case.college.percent <- paste0(100*round(sum(cc.covid.df$Q18..College.Degree == "TRUE")/nrow(cc.covid.df),2),
                                       "% College Graduates")
 
-complete.case.race.ethnicity <- paste0(100*round(sum(cc.covid.df$Q19.20..Race...Ethnicity == "Asian")/nrow(cc.covid.df),2),
-                                      "% Asian, ",
-                                      100*round(sum(cc.covid.df$Q19.20..Race...Ethnicity == "Black")/nrow(cc.covid.df),2),
+complete.case.race.ethnicity <- paste0("0.72% Asian, ",
+                                      round(100*sum(cc.covid.df$Q19.20..Race...Ethnicity == "Black")/nrow(cc.covid.df),2),
                                       "% Black, ",
-                                      100*round(sum(cc.covid.df$Q19.20..Race...Ethnicity == "Hispanic.Latino")/nrow(cc.covid.df),2),
+                                      round(100*sum(cc.covid.df$Q19.20..Race...Ethnicity == "Hispanic.Latino")/nrow(cc.covid.df),2),
                                       "% Hispanic/Latino, ",
-                                      100*round(sum(cc.covid.df$Q19.20..Race...Ethnicity == "Other")/nrow(cc.covid.df),2),
+                                      round(100*sum(cc.covid.df$Q19.20..Race...Ethnicity == "Other")/nrow(cc.covid.df),2),
                                       "% Other, ",
-                                      100*round(sum(cc.covid.df$Q19.20..Race...Ethnicity == "White")/nrow(cc.covid.df),2),
+                                      round(100*sum(cc.covid.df$Q19.20..Race...Ethnicity == "White")/nrow(cc.covid.df),2),
                                       "% White")
 
 complete.case.esda <- paste0(100*round(sum(cc.covid.df$Social.Distancing.Adherence)/nrow(cc.covid.df),2),
@@ -795,26 +795,25 @@ $$
 
 In addition to the sensitivity analysis involved in creating models across 25 different imputations, I also recreated the final President Trump Approval Score model using the *mice* package to impute values for our response prior to incorporating the breakoff point assumption. This is a classical MAR approach, as we use the available co-variates to populate the response values. In order to establish a baseline for expected performance, I also recreated this final model via a complete case approach. The coefficient estimates of the final model, the sensitivity model, and a complete case approach model are located in Tables 7, 8, and 9, respectively. Random forest plots comparing the coefficient estimates from the latter two models to those of the final one are located in Figures 3 and 10, respectively.
 
-While the final model incorporates missingness information directly into the response, it relies on a strong assumption with respect to the nature of the missingness. For this reason, I also created a hierarchical Bayesian model, where I first use the complete demographic covariates (age, race/ethnicity, and gender) to predict the likelihood that the *ESDA* of the surveyee is missing. The next level then relates that likelihood to the likelihood that the surveyee is social distancing. 
+While the final model incorporates missingness information directly into the response, it relies on a strong assumption with respect to the nature of the missingness. For this reason, I also created a non-ignorable missing data selection model, where I first use the complete demographic covariates (age, race/ethnicity, and gender) to predict the likelihood that the *ESDA* of the surveyee is missing. The next level then relates that likelihood to the likelihood that the surveyee is social distancing. 
 
-While prior selection built on previous literature is often a key component of Bayesian modeling, the novelty of pandemic behaviors did not sufficiently align with existing literature on adherence to other official health recommendations. For this reason, our final model's prior, along with those used for prior sensitivity analysis, are relatively non-informative. One potential extension of the work done in this paper would be to examine how trends here relate to a given resident's likelihood to get the vaccine.
+While prior selection built on previous literature is often a key component of Bayesian modeling, the novelty of pandemic behaviors did not sufficiently align with existing literature on adherence to other official health recommendations. For this reason, our final model's prior, along with those used for prior sensitivity analysis, are relatively non-informative. Note that the variance of the priors are relatively low due to the scale of the response. The *Results* section contains a more thorough discussion on prior selection.
 
 The parameterization of this model is:
 
 $$
 \begin{aligned}
-log(\frac{M_{i}}{1-M_{i}}) = \beta_0 + \beta_1 * I(Sex_i = Male) + \beta_2 * Health \ + \\
- \sum_{r=1}^4 \beta_{3r} * I(Race.Ethnicity_i = r) \ + \sum_{r=0}^4 \beta_{4r} * Age_i * I(Race.Ethnicity_i = r)
+log(\frac{M_{i}}{1-M_{i}}) = \beta_0 + \beta_1 * I(Sex_i = Male) +\sum_{r=1}^4 \beta_{3r} * I(Race.Ethnicity_i = r) \ + \\
+ \sum_{r=0}^4 \beta_{4r} * Age_i * I(Race.Ethnicity_i = r)
  \\
- log(\frac{P_{i}}{1-P_{i}}) = \alpha_0 + \alpha_1 * M_i
+ log(\frac{P_{i}}{1-P_{i}}) = a + b * y_i
  \\
- \beta_i \sim N(0,1) \\
- \alpha_i \sim N(0,1)
+ y_i \sim Bern(M_i), \ \ \beta_0 \sim N(0, 1), \ \ \beta_i \sim N(0,0.05), \ \ a \sim N(0,0.05) , \ \ b \sim N(0,0.05)
 \end{aligned}
 $$
 In this case $M_i$ represents the probability individual $i$'s *ESDA* is missing, and $P_i$ retains its meaning from previous models. Similar to before, the *Race/Ethnicity* covariate has a coefficient for those identifying as Asian, Black, Hispanic/Latino, and Other, while the combined effect of *Age* and *Race/Ethnicity* includes a covariate for White residents. 
 
-In order to ensure convergence of this model, as estimates were unwieldy due to limited representation from non-White race/ethnic groups, I examined traceplots, autocorrelation plots of each of the parameters, and $\hat{R}$ and $n_{eff}$ values. Prior sensitivity was also conducted via inspection of the posterior distribution of our parameters under different prior assumptions. The ideal results of these posterior checks relative to our final Bayesian model, are more fully discussed in the *Results* section.
+In order to ensure convergence of this model, as estimates were unwieldy due to limited representation from non-White race/ethnic groups, I examined traceplots, autocorrelation plots of each of the parameters, and $\hat{R}$ and $n_{eff}$ values. Prior sensitivity was also conducted via inspection of the posterior distribution of our parameters under different prior assumptions. The ideal results of these posterior checks are more fully discussed in the *Results* section.
 
 Finally, I explored a mixed effects model that used a random intercept for county. This was motivated by the fact that the counties in NC varied greatly in their response and adherence to social distancing measures [[18]][Bibliography]. Given that a county also often captures information regarding common demographics and political views, it may be able to substitute for other variables that are more expensive or difficult to collect on NC residents. 
 
@@ -1351,7 +1350,7 @@ colnames(complete.case.cm) <- c("Target", "Prediction", "N")
 imputation.1.results <- plot_confusion_matrix(complete.case.cm, 
                       add_row_percentages = FALSE,
                       add_col_percentages = FALSE) +
-      ggplot2::labs(subtitle = "Complete Case Approach") +
+      ggplot2::labs(subtitle = "All Surveys") +
       ggplot2::theme(plot.subtitle = element_text(hjust = 0.5, size = 10))
 ```
 
@@ -1368,7 +1367,7 @@ colnames(table1) <- c("Target", "Prediction", "N")
 complete.case.results <- plot_confusion_matrix(table1, 
                       add_row_percentages = FALSE,
                       add_col_percentages = FALSE) +
-      ggplot2::labs(subtitle = "Complete Case Approach: Non-Missing Data") +
+      ggplot2::labs(subtitle = "Complete Surveys") +
       ggplot2::theme(plot.subtitle = element_text(hjust = 0.5, size = 10))
 grid.arrange(arrangeGrob(complete.case.results,
                          imputation.1.results,
@@ -1378,7 +1377,232 @@ grid.arrange(arrangeGrob(complete.case.results,
 
 The confusion matrices in Figure 4 summarise the performance of our final model using a complete case approach. For both the set of complete surveys and the first imputation, this model almost fails to correctly classify any of the NC residents who weren't social distancing. This provides evidence that an MCAR (Missing Completely At Random) approach is insufficient for this dataset. A table summarising the model's coefficient estimates, along with a forest plot comparing them to our final model, are located in the Appendix (Table 9 and Figure 10).
 
-### Bayesian Missing-At-Random Imputation - Coming Soon :)
+### Non-Ignorable Data Selection Model - Coming Soon :)
+
+```{r load final bayesian model, eval=F}
+# Called rjags_model
+load(file="beta_0_20-a_0_20-b_0_20/full-intrxn-no-health-beta_0_20-a_0_20-b_0_20.Rdata")
+final.bayes.model <- rjags_model
+bayes.summary.df.n.0.20 <- final.bayes.model$BUGSoutput$summary %>% 
+  as.data.frame() 
+beta.rows <- c("alpha", 
+               "beta1", 
+               "beta2", 
+               "beta3", 
+               "beta4", 
+               "beta5", 
+               "beta6", 
+               "beta7", 
+               "beta8",
+               "beta9", 
+               "beta10")
+bayes.forest.table <- bayes.summary.df.n.0.20[beta.rows,]
+
+names(bayes.forest.table)[1] <- "Estimate"
+names(bayes.forest.table)[2] <- "Std.Error"
+rownames(bayes.forest.table) <- c("Intercept",
+                                  "Gender = Male",
+                                  "Race/Ethnicity = Asian",
+                                  "Race/Ethnicity = Black",
+                                  "Race/Ethnicity = Hispanic/Latino",
+                                  "Race/Ethnicity = Other",
+                                  "Age x Race/Ethnicity = Asian",
+                                  "Age x Race/Ethnicity = Black",
+                                  "Age x Race/Ethnicity = Hispanic/Latino",
+                                  "Age x Race/Ethnicity = Other",
+                                  "Age x Race/Ethnicity = White")
+bayes.forest.table$`P-Value` <- NA_integer_
+bayes.forest.table$Variables <- rownames(bayes.forest.table)
+bayes.forest.table <- bayes.forest.table %>% dplyr::select("Variables", "Estimate", "Std.Error", "P-Value")
+bayes.forest.table <- generate_forest_plot_df(bayes.forest.table)
+
+bayes.forest.table["Intercept", "Estimate"] <- bayes.summary.df.n.0.20["alpha","mean"]/10
+
+bayes.forest.table$Lower <- bayes.forest.table$Estimate - 1.96*bayes.forest.table$Std.Error
+bayes.forest.table["Intercept", "Lower"] <- bayes.summary.df.n.0.20["alpha","2.5%"]/10
+bayes.forest.table["Gender = Male", "Lower"] <- bayes.summary.df.n.0.20["beta1","2.5%"]
+
+bayes.forest.table$Upper <- bayes.forest.table$Estimate + 1.96*bayes.forest.table$Std.Error
+bayes.forest.table["Intercept", "Upper"] <- bayes.summary.df.n.0.20["alpha","97.5%"]/10
+bayes.forest.table["Gender = Male", "Upper"] <- bayes.summary.df.n.0.20["beta1","97.5%"]
+
+pres.trump.vs.bayes.forest.table <- pres.trump.forest.table[rownames(bayes.forest.table), ]
+
+
+forestplot(rownames(pres.trump.vs.bayes.forest.table), 
+           mean  = cbind(pres.trump.vs.bayes.forest.table$Estimate, bayes.forest.table$Estimate), 
+           lower = cbind(pres.trump.vs.bayes.forest.table$Estimate - 1.96*pres.trump.vs.bayes.forest.table$Std.Error, 
+                  bayes.forest.table$Lower),
+           upper = cbind(pres.trump.vs.bayes.forest.table$Estimate + 1.96*pres.trump.vs.bayes.forest.table$Std.Error, 
+                  bayes.forest.table$Upper),
+           line.margin = .2,
+           col = fpColors(box = c("blue", "darkred"),
+                          line = c("blue", "darkred")),
+           legend = c("Final", "N(0,1/20)"),
+           title="Figure INSERT: Final Model vs Bayesian Model N(0,1/20)",
+           txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain", fontsize=10),
+                            label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
+                            ticks = gpar(fontfamily = "serif"),
+                            xlab  = gpar(fontfamily = "serif")))
+```
+
+
+
+```{r, eval=F}
+# Called rjags_model
+load(file="beta_0_25-a_0_25-b_0_25/full-intrxn-no-health-beta_0_25-a_0_25-b_0_25.Rdata")
+final.bayes.model <- rjags_model
+bayes.summary.df.n.0.25 <- final.bayes.model$BUGSoutput$summary %>% 
+  as.data.frame() 
+beta.rows <- c("alpha", 
+               "beta1", 
+               "beta2", 
+               "beta3", 
+               "beta4", 
+               "beta5", 
+               "beta6", 
+               "beta7", 
+               "beta8",
+               "beta9", 
+               "beta10")
+bayes.forest.table <- bayes.summary.df.n.0.25[beta.rows,]
+
+names(bayes.forest.table)[1] <- "Estimate"
+names(bayes.forest.table)[2] <- "Std.Error"
+rownames(bayes.forest.table) <- c("Intercept",
+                                  "Gender = Male",
+                                  "Race/Ethnicity = Asian",
+                                  "Race/Ethnicity = Black",
+                                  "Race/Ethnicity = Hispanic/Latino",
+                                  "Race/Ethnicity = Other",
+                                  "Age x Race/Ethnicity = Asian",
+                                  "Age x Race/Ethnicity = Black",
+                                  "Age x Race/Ethnicity = Hispanic/Latino",
+                                  "Age x Race/Ethnicity = Other",
+                                  "Age x Race/Ethnicity = White")
+
+bayes.forest.table$`P-Value` <- NA_integer_
+bayes.forest.table$Variables <- rownames(bayes.forest.table)
+bayes.forest.table <- bayes.forest.table %>% dplyr::select("Variables", "Estimate", "Std.Error", "P-Value")
+bayes.forest.table <- generate_forest_plot_df(bayes.forest.table)
+
+bayes.forest.table["Intercept", "Estimate"] <- bayes.summary.df.n.0.25["alpha","mean"]/10
+
+bayes.forest.table$Lower <- bayes.forest.table$Estimate - 1.96*bayes.forest.table$Std.Error
+bayes.forest.table["Intercept", "Lower"] <- bayes.summary.df.n.0.25["alpha","2.5%"]/10
+bayes.forest.table["Gender = Male", "Lower"] <- bayes.summary.df.n.0.25["beta1","2.5%"]
+
+bayes.forest.table$Upper <- bayes.forest.table$Estimate + 1.96*bayes.forest.table$Std.Error
+bayes.forest.table["Intercept", "Upper"] <- bayes.summary.df.n.0.25["alpha","97.5%"]/10
+bayes.forest.table["Gender = Male", "Upper"] <- bayes.summary.df.n.0.25["beta1","97.5%"]
+
+forestplot(rownames(pres.trump.vs.bayes.forest.table), 
+           mean  = cbind(pres.trump.vs.bayes.forest.table$Estimate, bayes.forest.table$Estimate), 
+           lower = cbind(pres.trump.vs.bayes.forest.table$Estimate - 1.96*pres.trump.vs.bayes.forest.table$Std.Error, 
+                  bayes.forest.table$Lower),
+           upper = cbind(pres.trump.vs.bayes.forest.table$Estimate + 1.96*pres.trump.vs.bayes.forest.table$Std.Error, 
+                  bayes.forest.table$Upper),
+           line.margin = .2,
+           col = fpColors(box = c("blue", "darkred"),
+                          line = c("blue", "darkred")),
+           legend = c("Final", "N(0,1/25)"),
+           title="Figure INSERT: Final Model vs Bayesian Model N(0,1/25)",
+           txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain", fontsize=10),
+                            label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
+                            ticks = gpar(fontfamily = "serif"),
+                            xlab  = gpar(fontfamily = "serif")))
+```
+
+```{r, eval=F}
+# Called rjags_model
+load(file="beta_0_50-a_0_50-b_0_50/full-intrxn-no-health-beta_0_50-a_0_50-b_0_50.Rdata")
+final.bayes.model <- rjags_model
+bayes.summary.df.n.0.20 <- final.bayes.model$BUGSoutput$summary %>% 
+  as.data.frame() 
+beta.rows <- c("alpha", 
+               "beta1", 
+               "beta2", 
+               "beta3", 
+               "beta4", 
+               "beta5", 
+               "beta6", 
+               "beta7", 
+               "beta8",
+               "beta9", 
+               "beta10")
+bayes.forest.table <- bayes.summary.df.n.0.20[beta.rows,]
+
+names(bayes.forest.table)[1] <- "Estimate"
+names(bayes.forest.table)[2] <- "Std.Error"
+rownames(bayes.forest.table) <- c("Intercept",
+                                  "Gender = Male",
+                                  "Race/Ethnicity = Asian",
+                                  "Race/Ethnicity = Black",
+                                  "Race/Ethnicity = Hispanic/Latino",
+                                  "Race/Ethnicity = Other",
+                                  "Age x Race/Ethnicity = Asian",
+                                  "Age x Race/Ethnicity = Black",
+                                  "Age x Race/Ethnicity = Hispanic/Latino",
+                                  "Age x Race/Ethnicity = Other",
+                                  "Age x Race/Ethnicity = White")
+
+bayes.forest.table$`P-Value` <- NA_integer_
+bayes.forest.table$Variables <- rownames(bayes.forest.table)
+bayes.forest.table <- bayes.forest.table %>% dplyr::select("Variables", "Estimate", "Std.Error", "P-Value")
+bayes.forest.table <- generate_forest_plot_df(bayes.forest.table)
+
+bayes.forest.table["Intercept", "Estimate"] <- bayes.summary.df.n.0.20["alpha","mean"]/10
+
+bayes.forest.table$Lower <- bayes.forest.table$Estimate - 1.96*bayes.forest.table$Std.Error
+bayes.forest.table["Intercept", "Lower"] <- bayes.summary.df.n.0.20["alpha","2.5%"]/10
+bayes.forest.table["Gender = Male", "Lower"] <- bayes.summary.df.n.0.20["beta1","2.5%"]
+
+bayes.forest.table$Upper <- bayes.forest.table$Estimate + 1.96*bayes.forest.table$Std.Error
+bayes.forest.table["Intercept", "Upper"] <- bayes.summary.df.n.0.20["alpha","97.5%"]/10
+bayes.forest.table["Gender = Male", "Upper"] <- bayes.summary.df.n.0.20["beta1","97.5%"]
+
+forestplot(rownames(pres.trump.vs.bayes.forest.table), 
+           mean  = cbind(pres.trump.vs.bayes.forest.table$Estimate, bayes.forest.table$Estimate), 
+           lower = cbind(pres.trump.vs.bayes.forest.table$Estimate - 1.96*pres.trump.vs.bayes.forest.table$Std.Error, 
+                  bayes.forest.table$Lower),
+           upper = cbind(pres.trump.vs.bayes.forest.table$Estimate + 1.96*pres.trump.vs.bayes.forest.table$Std.Error, 
+                  bayes.forest.table$Upper),
+           line.margin = .2,
+           col = fpColors(box = c("blue", "darkred"),
+                          line = c("blue", "darkred")),
+           legend = c("Final", "N(0,50)"),
+           title="Figure INSERT: Final Model vs Bayesian Model N(0,1/50)",
+           txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain", fontsize=10),
+                            label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
+                            ticks = gpar(fontfamily = "serif"),
+                            xlab  = gpar(fontfamily = "serif")))
+```
+
+```{r, eval=F}
+ab.n.0.20 <- bayes.summary.df.n.0.20[c("a", "b"), ]
+ab.n.0.25 <- bayes.summary.df.n.0.25[c("a", "b"), ]
+ab.n.0.20 <- bayes.summary.df.n.0.20[c("a", "b"), ]
+
+forestplot(c("a", "b"),
+           mean = cbind(ab.n.0.20$mean,
+                        ab.n.0.25$mean,
+                        ab.n.0.20$mean),
+           lower=cbind(ab.n.0.20$`2.5%`,
+                        ab.n.0.25$`2.5%`,
+                        ab.n.0.20$`2.5%`),
+           upper=cbind(ab.n.0.20$`97.5%`,
+                        ab.n.0.25$`97.5%`,
+                        ab.n.0.20$`97.5%`),
+           line.margin = .2,
+           col = fpColors(box = c("blue", "darkred", "green"),
+                          line = c("blue", "darkred", "green")),
+           legend = c("N(0,20)", "N(0,25)", "N(0,50)"),
+           title="Figure INSERT: Parameters Across Priors",
+           txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain", fontsize=10),
+                            label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
+                            ticks = gpar(fontfamily = "serif"),
+                            xlab  = gpar(fontfamily = "serif")))
+```
 
 With respect to traceplots, random scatter around the estimate and clear "mixing" between different chains indicate convergence. An ideal autocorrelation plot will peak at the beginning and quickly drop close to 0, which provides evidence that the iterations sufficiently explored the parameter space and weren't strongly dependent on one another. $\hat{R}$ values provide an estimate of convergence based on the variance of an estimated parameter between chains, and the variance within a chain. An $\hat{R}$ value close to 1 suggests convergence. Finally, the $n_{eff}$ provides insight into whether our model has achieved stationarity, as it estimates the number of independent observations we obtained in our posterior draws. 
 
@@ -1387,7 +1611,9 @@ With respect to traceplots, random scatter around the estimate and clear "mixing
 ```{r Random Intercept Select Coeffs , fig.align = "center",warning=FALSE,echo=FALSE,cache=T}
 covid.df.county <- covid.df.county[!is.na(covid.df.county$county_name) & !is.na(covid.df.county$Q5..Children.in.HH), ]
 
-covid.df.county.mod <- glmer(Social.Distancing.Adherence ~ Q5..Children.in.HH + 
+covid.df.county.mod <- glmer(Social.Distancing.Adherence ~ 
+                               DEMOGRAPHICS...GENDER +
+                               Q5..Children.in.HH + 
                                Q19.20..Race...Ethnicity + 
                                trump_approve_score +  
                                age_race_ethnicity_asian + 
@@ -1395,10 +1621,10 @@ covid.df.county.mod <- glmer(Social.Distancing.Adherence ~ Q5..Children.in.HH +
                                age_race_ethnicity_hispanic +
                                age_race_ethnicity_other +
                                age_race_ethnicity_white + 
-                               (1|county_name), 
+                               (1|county_name),
                              family=binomial,
                              weights=weight,
-                           data=covid.df.county)
+                             data=covid.df.county)
 
 county.random.effects <- as.data.frame(VarCorr(covid.df.county.mod)) %>% dplyr::select(c("sdcor"))
 county.random.effects$sdcor <- round(county.random.effects$sdcor, 4)
@@ -1439,6 +1665,7 @@ county.false.positive = county.cv.table[2,1]/(county.cv.table[1,1] + county.cv.t
 county.mod.table <- as.data.frame(summary(covid.df.county.mod)[[10]]) %>% select("Estimate", "Std. Error", "Pr(>|z|)")
 colnames(county.mod.table) <- c("Estimate", "Std.Error", "P-Value")
 county.mod.table$Variables <- c("Intercept",
+                                "Gender = Male",
                                 "Children in Household",
                                 "Race/Ethnicity = Asian",
                                 "Race/Ethnicity = Black",
@@ -1476,6 +1703,26 @@ forestplot(rownames(pres.trump.forest.table[county.row, ]),
                             label = gpar(fontfamily = "serif", fontface="plain",fontsize=10),
                             ticks = gpar(fontfamily = "serif",fontsize=12),
                             xlab  = gpar(fontfamily = "serif",fontsize=12)))
+```
+
+```{r, eval=F}
+county.mod.vs.bayes.forest.table <- county.mod.forest.table[rownames(bayes.forest.table), ]
+
+forestplot(rownames(county.mod.vs.bayes.forest.table), 
+           mean  = cbind(county.mod.vs.bayes.forest.table$Estimate, bayes.forest.table$Estimate), 
+           lower = cbind(county.mod.vs.bayes.forest.table$Estimate - 1.96*county.mod.vs.bayes.forest.table$Std.Error, 
+                  bayes.forest.table$Lower),
+           upper = cbind(county.mod.vs.bayes.forest.table$Estimate + 1.96*county.mod.vs.bayes.forest.table$Std.Error, 
+                  bayes.forest.table$Upper),
+           line.margin = .2,
+           col = fpColors(box = c("blue", "darkred"),
+                          line = c("blue", "darkred")),
+           legend = c("Final", "N(0,50)"),
+           title="Figure INSERT: County Model vs Bayesian Model N(0,1/50)",
+           txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain", fontsize=10),
+                            label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
+                            ticks = gpar(fontfamily = "serif"),
+                            xlab  = gpar(fontfamily = "serif")))
 ```
 
 ```{r Random Intercept Table Tau, fig.align = "center",warning=FALSE,echo=FALSE,cache=F}
@@ -1555,11 +1802,15 @@ It is important to mention this trend varies across counties, such as Durham Cou
 
 # Discussion
 
-We began by conducting multiple missing data imputation using the *mice* package after seeing evidence that the data was missing not at random. While this imposed the assumption that the data was missing at random, we were able to quantify our uncertainty around many different imputations and explore a variety of models, despite this limitation. Our ultimate model showed that age, race/ethnic identity, household size, number of children, and President Trump Approval Score were significant covariates when predicting the likelihood of social distancing.
+We began with a model that relied on strong assumption regarding the breakoff point of the survey, and conducted multiple missing data imputation using the *mice* package. Using Rubin's Rules, we were able to quantify our uncertainty around many different imputations and explore a variety of models, despite this limitation. Our ultimate model showed that age, race/ethnic identity, household size, number of children, and President Trump Approval Score were significant covariates when predicting the likelihood of social distancing.
 
-We saw consistent issues across the many models we explored with an overly high false-positive rate. This trend is likely due to the fact that people are generally either failing to socially distance by choice (i.e. spending time in large groups without necessity) or by necessity (in-person job). This trend is difficult to capture using demographic data alone. Further this nuance in of itself, i.e. whether a participant is able to socially distance in the first place, is just as high of a priority to understand.
+We saw consistent issues across the many models we explored with a high false-positive rate. This trend is likely due to the fact that people are generally either failing to socially distance by choice (i.e. spending time in large groups without necessity) or by necessity (in-person job). This trend is difficult to capture using demographic data alone. Further this nuance in of itself, i.e. whether a participant is able to socially distance in the first place, is just as high of a priority to understand.
 
-Finally, while the county-intercept model proved to be insufficient, as we were unable to use a large fraction of the dataset, it serves as interesting evidence that social distancing adherence may vary widely from county to county. Another interesting perspective on this data would be to examine how social distancing adherence varies across congressional districts, as they are highly partisan in North Carolina.
+For our sensitivity analysis, we developed a classical missing-at-random model by populating the response using the mice package and examining the results of a complete case analysis. In general, our coefficients for the MAR model largely agreed with our final model. The complete case model offered strong evidence that a missing-completely-at-random approach is insufficient in the context of this dataset.
+
+Next, we attempted a missing-not-at-random model by relating the missingness of *ESDA* to the value itself. (Once results are finalized, a summary will be here!).
+
+Finally, while the county-intercept model suffered a significant limitation of only utilizing a fraction of the dataset, it provided insight into how social distancing adherence varies among counties. Another interesting perspective on this data would be to examine how social distancing adherence varies across congressional districts, as they are highly partisan in North Carolina.
  
 # Limitations
 
@@ -1667,6 +1918,7 @@ forestplot(rownames(pres.trump.forest.table),
 county.results.table.appendix <- data.frame(Estimates=summary(covid.df.county.mod)$coefficients[, 1],                                      Std.Err=summary(covid.df.county.mod)$coefficients[, 2],                                       P.Value=summary(covid.df.county.mod)$coefficients[, 4])
 colnames(county.results.table.appendix) <- c("Estimate", "Std.Error", "P-Value")
 county.results.table.appendix$Variables <- c("Intercept",
+                                             "Gender = Male",
                                              "Children in Household",
                                              "Race/Ethnicity = Asian",
                                              "Race/Ethnicity = Black",

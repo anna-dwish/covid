@@ -7,3 +7,5 @@ beta*
 .Rhistory
 *.pdf
 MNAR_COVID_Scratch_Work.Rmd
+obsolete*
+mnar-models-esda-full-*
