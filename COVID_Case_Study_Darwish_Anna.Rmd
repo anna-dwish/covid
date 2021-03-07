@@ -3,7 +3,9 @@ title: "Social Distancing Adherence in North Carolina"
 author: "Anna Darwish"
 date: "`r format(Sys.time(), '%d %B %Y')`"
 geometry: "left=1.25cm,right=1.25cm,top=1.3cm,bottom=1.3cm"
-output: pdf_document
+output: 
+  pdf_document:
+    fig_caption: yes
 ---
 
 ```{r, function checking for installed packages, echo=FALSE, results="hide", include=FALSE}
@@ -21,6 +23,7 @@ pkgTest <- function(x)
 ```{r Package Test Libraries, echo=FALSE, results="hide", include=FALSE}
 pkgTest("arm")
 pkgTest("broom")
+pkgTest("coda")
 pkgTest("cvms")
 pkgTest("dplyr")
 pkgTest("forestplot")
@@ -37,6 +40,7 @@ pkgTest("lme4")
 pkgTest("lmerTest")
 pkgTest("maps")
 pkgTest("MASS")
+pkgTest("mcmcplots")
 pkgTest("mice")
 pkgTest("miceadds")
 pkgTest("miceMNAR")
@@ -45,12 +49,14 @@ pkgTest("plyr")
 pkgTest("scales")
 pkgTest("sjPlot")
 pkgTest("stringr")
+pkgTest("tidybayes")
 pkgTest("tidyr")
 ```
 
 ```{r Load in Libraries, echo=FALSE, results="hide", include=FALSE}
 library(arm)
 library(broom)
+library(coda)
 library(cvms)
 library(dplyr)
 library(forestplot)
@@ -67,6 +73,7 @@ library(lme4)
 library(lmerTest)
 library(maps)
 library(MASS)
+library(mcmcplots)
 library(mice)
 library(miceadds)
 library(miceMNAR)
@@ -76,6 +83,7 @@ library(scales)
 library(sjPlot)
 library(stringr)
 library(tidyr)
+library(tidybayes)
 knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE,
                       warning = FALSE)
@@ -1014,7 +1022,7 @@ Table 4 summarizes the different models I explored for the demographics-only mod
 
 From the confusion matrix in Figure 7 in the Appendix, we see an example of this high false positive rate. However, the residual plot in Figure 8 in the Appendix shows a relatively consistent random scatter about the zero line with few low outliers. The limitations to this model's predictive performance are likely a consequence of the fact that the ability and/or decision to socially distance varies largely from person to person. 
 
-```{r performance evaluation, warning=FALSE, cache=F }
+```{r performance evaluation, warning=FALSE, cache=T}
 cv_plot <- function(with.obj, pool.obj, covid.data, create.cm.plot=FALSE, subtitle.cm=NA){
   fit_results = list()
   
@@ -1377,84 +1385,50 @@ grid.arrange(arrangeGrob(complete.case.results,
 
 The confusion matrices in Figure 4 summarise the performance of our final model using a complete case approach. For both the set of complete surveys and the first imputation, this model almost fails to correctly classify any of the NC residents who weren't social distancing. This provides evidence that an MCAR (Missing Completely At Random) approach is insufficient for this dataset. A table summarising the model's coefficient estimates, along with a forest plot comparing them to our final model, are located in the Appendix (Table 9 and Figure 10).
 
-### Non-Ignorable Data Selection Model - Coming Soon :)
+### Non-Ignorable Data Selection Model
 
-```{r load final bayesian model, eval=F}
-# Called rjags_model
-load(file="beta_0_20-a_0_20-b_0_20/full-intrxn-no-health-beta_0_20-a_0_20-b_0_20.Rdata")
-final.bayes.model <- rjags_model
-bayes.summary.df.n.0.20 <- final.bayes.model$BUGSoutput$summary %>% 
-  as.data.frame() 
-beta.rows <- c("alpha", 
-               "beta1", 
-               "beta2", 
-               "beta3", 
-               "beta4", 
-               "beta5", 
-               "beta6", 
-               "beta7", 
-               "beta8",
-               "beta9", 
-               "beta10")
-bayes.forest.table <- bayes.summary.df.n.0.20[beta.rows,]
+```{r main approach version, warning=F}
+with.age.race.gender.intrxn.age.race <- with(data=imp.covid.df,
+                                             expr = glm(Social.Distancing.Adherence ~ Q19.20..Race...Ethnicity +
+                                                          DEMOGRAPHICS...GENDER +
+                                                          age_race_ethnicity_asian +
+                                                          age_race_ethnicity_black +
+                                                          age_race_ethnicity_hispanic +
+                                                          age_race_ethnicity_other +
+                                                          age_race_ethnicity_white,
+                                                        family=binomial,
+                                                        weights=covid.weights))
 
-names(bayes.forest.table)[1] <- "Estimate"
-names(bayes.forest.table)[2] <- "Std.Error"
-rownames(bayes.forest.table) <- c("Intercept",
-                                  "Gender = Male",
-                                  "Race/Ethnicity = Asian",
-                                  "Race/Ethnicity = Black",
-                                  "Race/Ethnicity = Hispanic/Latino",
-                                  "Race/Ethnicity = Other",
-                                  "Age x Race/Ethnicity = Asian",
-                                  "Age x Race/Ethnicity = Black",
-                                  "Age x Race/Ethnicity = Hispanic/Latino",
-                                  "Age x Race/Ethnicity = Other",
-                                  "Age x Race/Ethnicity = White")
-bayes.forest.table$`P-Value` <- NA_integer_
-bayes.forest.table$Variables <- rownames(bayes.forest.table)
-bayes.forest.table <- bayes.forest.table %>% dplyr::select("Variables", "Estimate", "Std.Error", "P-Value")
-bayes.forest.table <- generate_forest_plot_df(bayes.forest.table)
-
-bayes.forest.table["Intercept", "Estimate"] <- bayes.summary.df.n.0.20["alpha","mean"]/10
-
-bayes.forest.table$Lower <- bayes.forest.table$Estimate - 1.96*bayes.forest.table$Std.Error
-bayes.forest.table["Intercept", "Lower"] <- bayes.summary.df.n.0.20["alpha","2.5%"]/10
-bayes.forest.table["Gender = Male", "Lower"] <- bayes.summary.df.n.0.20["beta1","2.5%"]
-
-bayes.forest.table$Upper <- bayes.forest.table$Estimate + 1.96*bayes.forest.table$Std.Error
-bayes.forest.table["Intercept", "Upper"] <- bayes.summary.df.n.0.20["alpha","97.5%"]/10
-bayes.forest.table["Gender = Male", "Upper"] <- bayes.summary.df.n.0.20["beta1","97.5%"]
-
-pres.trump.vs.bayes.forest.table <- pres.trump.forest.table[rownames(bayes.forest.table), ]
-
-
-forestplot(rownames(pres.trump.vs.bayes.forest.table), 
-           mean  = cbind(pres.trump.vs.bayes.forest.table$Estimate, bayes.forest.table$Estimate), 
-           lower = cbind(pres.trump.vs.bayes.forest.table$Estimate - 1.96*pres.trump.vs.bayes.forest.table$Std.Error, 
-                  bayes.forest.table$Lower),
-           upper = cbind(pres.trump.vs.bayes.forest.table$Estimate + 1.96*pres.trump.vs.bayes.forest.table$Std.Error, 
-                  bayes.forest.table$Upper),
-           line.margin = .2,
-           col = fpColors(box = c("blue", "darkred"),
-                          line = c("blue", "darkred")),
-           legend = c("Final", "N(0,1/20)"),
-           title="Figure INSERT: Final Model vs Bayesian Model N(0,1/20)",
-           txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain", fontsize=10),
-                            label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
-                            ticks = gpar(fontfamily = "serif"),
-                            xlab  = gpar(fontfamily = "serif")))
+pool.age.race.gender.intrxn.age.race <-
+  pool(with.age.race.gender.intrxn.age.race)
+mcar.model.mice.estimates.table <-
+  data.frame(summary(pool.age.race.gender.intrxn.age.race)) %>% 
+  dplyr::select("term", "estimate", "std.error", "p.value")
+colnames(mcar.model.mice.estimates.table) <- c("Variables", "Estimate", "Std.Error", "P-Value")
+mcar.model.mice.estimates.table$Variables <-c("Intercept",
+                                 "Race/Ethnicity = Asian",
+                                 "Race/Ethnicity = Black",
+                                 "Race/Ethnicity = Hispanic/Latino",
+                                 "Race/Ethnicity = Other",
+                                 "Gender = Male",
+                                 "Age x Race/Ethnicity = Asian",
+                                 "Age x Race/Ethnicity = Black",
+                                 "Age x Race/Ethnicity = Hispanic/Latino",
+                                 "Age x Race/Ethnicity = Other",
+                                 "Age x Race/Ethnicity = White")
+rownames(mcar.model.mice.estimates.table) <- mcar.model.mice.estimates.table$Variables
+mcar.model.mice.estimates.forest.table <- generate_forest_plot_df(mcar.model.mice.estimates.table)
 ```
 
 
-
-```{r, eval=F}
+```{r load non ignorable model}
 # Called rjags_model
-load(file="beta_0_25-a_0_25-b_0_25/full-intrxn-no-health-beta_0_25-a_0_25-b_0_25.Rdata")
-final.bayes.model <- rjags_model
-bayes.summary.df.n.0.25 <- final.bayes.model$BUGSoutput$summary %>% 
+load(file="beta_0_10-a_0_20-b_0_20/full-intrxn-no-health-alpha_0_1-beta_0_10-a_0_20-b_0_20.Rdata")
+mnar.final.model <- rjags_model
+
+mnar.final.model.df <- mnar.final.model$BUGSoutput$summary %>% 
   as.data.frame() 
-beta.rows <- c("alpha", 
+mu.params <- c("alpha", 
                "beta1", 
                "beta2", 
                "beta3", 
@@ -1465,11 +1439,21 @@ beta.rows <- c("alpha",
                "beta8",
                "beta9", 
                "beta10")
-bayes.forest.table <- bayes.summary.df.n.0.25[beta.rows,]
+mnar.final.model.forest.table <- mnar.final.model.df[mu.params, ]
+```
 
-names(bayes.forest.table)[1] <- "Estimate"
-names(bayes.forest.table)[2] <- "Std.Error"
-rownames(bayes.forest.table) <- c("Intercept",
+```{r mnar vs mcar forest plot, fig.align="center"}
+names(mnar.final.model.forest.table)[1] <- "Estimate"
+names(mnar.final.model.forest.table)[2] <- "Std.Error"
+mnar.final.model.forest.table$`P-Value` <- NA_integer_
+mnar.final.model.forest.table$Variables <- rownames(mnar.final.model.forest.table)
+mnar.final.model.forest.table <- mnar.final.model.forest.table %>% 
+  dplyr::select("Variables", 
+                "Estimate", 
+                "Std.Error", 
+                "P-Value")
+
+rownames(mnar.final.model.forest.table) <- c("Intercept",
                                   "Gender = Male",
                                   "Race/Ethnicity = Asian",
                                   "Race/Ethnicity = Black",
@@ -1481,130 +1465,146 @@ rownames(bayes.forest.table) <- c("Intercept",
                                   "Age x Race/Ethnicity = Other",
                                   "Age x Race/Ethnicity = White")
 
-bayes.forest.table$`P-Value` <- NA_integer_
-bayes.forest.table$Variables <- rownames(bayes.forest.table)
-bayes.forest.table <- bayes.forest.table %>% dplyr::select("Variables", "Estimate", "Std.Error", "P-Value")
-bayes.forest.table <- generate_forest_plot_df(bayes.forest.table)
+mnar.final.model.forest.table <- generate_forest_plot_df(mnar.final.model.forest.table)
 
-bayes.forest.table["Intercept", "Estimate"] <- bayes.summary.df.n.0.25["alpha","mean"]/10
-
-bayes.forest.table$Lower <- bayes.forest.table$Estimate - 1.96*bayes.forest.table$Std.Error
-bayes.forest.table["Intercept", "Lower"] <- bayes.summary.df.n.0.25["alpha","2.5%"]/10
-bayes.forest.table["Gender = Male", "Lower"] <- bayes.summary.df.n.0.25["beta1","2.5%"]
-
-bayes.forest.table$Upper <- bayes.forest.table$Estimate + 1.96*bayes.forest.table$Std.Error
-bayes.forest.table["Intercept", "Upper"] <- bayes.summary.df.n.0.25["alpha","97.5%"]/10
-bayes.forest.table["Gender = Male", "Upper"] <- bayes.summary.df.n.0.25["beta1","97.5%"]
-
-forestplot(rownames(pres.trump.vs.bayes.forest.table), 
-           mean  = cbind(pres.trump.vs.bayes.forest.table$Estimate, bayes.forest.table$Estimate), 
-           lower = cbind(pres.trump.vs.bayes.forest.table$Estimate - 1.96*pres.trump.vs.bayes.forest.table$Std.Error, 
-                  bayes.forest.table$Lower),
-           upper = cbind(pres.trump.vs.bayes.forest.table$Estimate + 1.96*pres.trump.vs.bayes.forest.table$Std.Error, 
-                  bayes.forest.table$Upper),
+forestplot(rownames(mnar.final.model.forest.table), 
+           mean  = cbind(mcar.model.mice.estimates.forest.table$Estimate,
+                         mnar.final.model.forest.table$Estimate), 
+           lower = cbind(mcar.model.mice.estimates.forest.table$Estimate -
+                           1.96*mcar.model.mice.estimates.forest.table$Std.Error, 
+                         mnar.final.model.forest.table$Estimate-
+                           1.96*mnar.final.model.forest.table$Std.Error),
+           upper = cbind(mcar.model.mice.estimates.forest.table$Estimate +
+                           1.96*mcar.model.mice.estimates.forest.table$Std.Error,
+                         mnar.final.model.forest.table$Estimate +
+                           1.96*mnar.final.model.forest.table$Std.Error),
            line.margin = .2,
            col = fpColors(box = c("blue", "darkred"),
                           line = c("blue", "darkred")),
-           legend = c("Final", "N(0,1/25)"),
-           title="Figure INSERT: Final Model vs Bayesian Model N(0,1/25)",
+           legend = c("Final", "MNAR"),
+           title="Figure INSERT: Final Model vs MNAR Model",
            txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain", fontsize=10),
                             label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
                             ticks = gpar(fontfamily = "serif"),
                             xlab  = gpar(fontfamily = "serif")))
 ```
 
-```{r, eval=F}
-# Called rjags_model
-load(file="beta_0_50-a_0_50-b_0_50/full-intrxn-no-health-beta_0_50-a_0_50-b_0_50.Rdata")
-final.bayes.model <- rjags_model
-bayes.summary.df.n.0.20 <- final.bayes.model$BUGSoutput$summary %>% 
-  as.data.frame() 
-beta.rows <- c("alpha", 
-               "beta1", 
-               "beta2", 
-               "beta3", 
-               "beta4", 
-               "beta5", 
-               "beta6", 
-               "beta7", 
-               "beta8",
-               "beta9", 
-               "beta10")
-bayes.forest.table <- bayes.summary.df.n.0.20[beta.rows,]
-
-names(bayes.forest.table)[1] <- "Estimate"
-names(bayes.forest.table)[2] <- "Std.Error"
-rownames(bayes.forest.table) <- c("Intercept",
-                                  "Gender = Male",
-                                  "Race/Ethnicity = Asian",
-                                  "Race/Ethnicity = Black",
-                                  "Race/Ethnicity = Hispanic/Latino",
-                                  "Race/Ethnicity = Other",
-                                  "Age x Race/Ethnicity = Asian",
-                                  "Age x Race/Ethnicity = Black",
-                                  "Age x Race/Ethnicity = Hispanic/Latino",
-                                  "Age x Race/Ethnicity = Other",
-                                  "Age x Race/Ethnicity = White")
-
-bayes.forest.table$`P-Value` <- NA_integer_
-bayes.forest.table$Variables <- rownames(bayes.forest.table)
-bayes.forest.table <- bayes.forest.table %>% dplyr::select("Variables", "Estimate", "Std.Error", "P-Value")
-bayes.forest.table <- generate_forest_plot_df(bayes.forest.table)
-
-bayes.forest.table["Intercept", "Estimate"] <- bayes.summary.df.n.0.20["alpha","mean"]/10
-
-bayes.forest.table$Lower <- bayes.forest.table$Estimate - 1.96*bayes.forest.table$Std.Error
-bayes.forest.table["Intercept", "Lower"] <- bayes.summary.df.n.0.20["alpha","2.5%"]/10
-bayes.forest.table["Gender = Male", "Lower"] <- bayes.summary.df.n.0.20["beta1","2.5%"]
-
-bayes.forest.table$Upper <- bayes.forest.table$Estimate + 1.96*bayes.forest.table$Std.Error
-bayes.forest.table["Intercept", "Upper"] <- bayes.summary.df.n.0.20["alpha","97.5%"]/10
-bayes.forest.table["Gender = Male", "Upper"] <- bayes.summary.df.n.0.20["beta1","97.5%"]
-
-forestplot(rownames(pres.trump.vs.bayes.forest.table), 
-           mean  = cbind(pres.trump.vs.bayes.forest.table$Estimate, bayes.forest.table$Estimate), 
-           lower = cbind(pres.trump.vs.bayes.forest.table$Estimate - 1.96*pres.trump.vs.bayes.forest.table$Std.Error, 
-                  bayes.forest.table$Lower),
-           upper = cbind(pres.trump.vs.bayes.forest.table$Estimate + 1.96*pres.trump.vs.bayes.forest.table$Std.Error, 
-                  bayes.forest.table$Upper),
-           line.margin = .2,
-           col = fpColors(box = c("blue", "darkred"),
-                          line = c("blue", "darkred")),
-           legend = c("Final", "N(0,50)"),
-           title="Figure INSERT: Final Model vs Bayesian Model N(0,1/50)",
-           txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain", fontsize=10),
-                            label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
-                            ticks = gpar(fontfamily = "serif"),
-                            xlab  = gpar(fontfamily = "serif")))
+```{r traceplot, fig.height=2, fig.align='center'}
+tidybayes::gather_draws(mnar.final.model %>% as.mcmc(.),
+                        a,
+                        b) %>% 
+  ungroup() %>% 
+  ggplot() + 
+  geom_line(aes(x = .iteration, y = .value, color = as.factor(.chain)), alpha = 0.7) + 
+  facet_grid(.variable~., scales = "free_y") + 
+  labs(title = "Traceplots of a and b", 
+       x = "Iteration", y = "Value", color = "Chain")
 ```
 
-```{r, eval=F}
-ab.n.0.20 <- bayes.summary.df.n.0.20[c("a", "b"), ]
-ab.n.0.25 <- bayes.summary.df.n.0.25[c("a", "b"), ]
-ab.n.0.20 <- bayes.summary.df.n.0.20[c("a", "b"), ]
-
-forestplot(c("a", "b"),
-           mean = cbind(ab.n.0.20$mean,
-                        ab.n.0.25$mean,
-                        ab.n.0.20$mean),
-           lower=cbind(ab.n.0.20$`2.5%`,
-                        ab.n.0.25$`2.5%`,
-                        ab.n.0.20$`2.5%`),
-           upper=cbind(ab.n.0.20$`97.5%`,
-                        ab.n.0.25$`97.5%`,
-                        ab.n.0.20$`97.5%`),
-           line.margin = .2,
-           col = fpColors(box = c("blue", "darkred", "green"),
-                          line = c("blue", "darkred", "green")),
-           legend = c("N(0,20)", "N(0,25)", "N(0,50)"),
-           title="Figure INSERT: Parameters Across Priors",
-           txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain", fontsize=10),
-                            label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
-                            ticks = gpar(fontfamily = "serif"),
-                            xlab  = gpar(fontfamily = "serif")))
+```{r rhat and neff}
+mnar.final.model.df[c(mu.params,
+                      "a",
+                      "b"), ] %>% 
+  dplyr::select(Rhat, n.eff) %>%
+  mutate(Rhat=format(round(Rhat,2),
+                     nsmall=2)) %>%
+  t(.) %>%
+  as.data.frame() %>%
+  knitr::kable(., format="latex",
+               escape = F,
+               booktabs = T, 
+               linesep = "", 
+               align = "c",
+               row.names=F,
+               col.names=c("$\\alpha$",
+                           "$\\beta_1$",
+                           "$\\beta_2$",
+                           "$\\beta_3$",
+                           "$\\beta_4$",
+                           "$\\beta_5$",
+                           "$\\beta_6$",
+                           "$\\beta_7$",
+                           "$\\beta_8$",
+                           "$\\beta_9$",
+                           "$\\beta_{10}$",
+                           "a",
+                           "b"),
+               caption="$\\hat{R}$ and $N_{e\\mathit{ff}}$ Values") %>%
+  kableExtra::kable_styling(latex_options = c("hold_position"))
 ```
 
-With respect to traceplots, random scatter around the estimate and clear "mixing" between different chains indicate convergence. An ideal autocorrelation plot will peak at the beginning and quickly drop close to 0, which provides evidence that the iterations sufficiently explored the parameter space and weren't strongly dependent on one another. $\hat{R}$ values provide an estimate of convergence based on the variance of an estimated parameter between chains, and the variance within a chain. An $\hat{R}$ value close to 1 suggests convergence. Finally, the $n_{eff}$ provides insight into whether our model has achieved stationarity, as it estimates the number of independent observations we obtained in our posterior draws. 
+```{r density plots over priors}
+generate_density_plot <- function(prior_meta,
+                                  param,
+                                  final_model=F){
+  if(final_model){
+    rjags_model <- mnar.final.model
+    prior_lab <- expression(beta~" ~ N(0,1/10), a ~ N(0,1/20), b ~ N(0,1/20)")
+    line_type = "solid"
+  }
+  else{
+    prior_path <- prior_meta[[1]]
+    prior_lab <- prior_meta[[2]]
+    line_type = "dashed"
+  
+    load(prior_path)
+  }
+  
+  p <- rjags_model$BUGSoutput$sims.matrix %>% 
+    as.data.frame() %>%
+    dplyr::select((!!as.symbol(param))) %>%
+    ggplot() + 
+    geom_density(aes(x = (!!as.symbol(param)))) + 
+    geom_vline(xintercept = mnar.final.model.df[param, "mean"], 
+               color = "red",
+               linetype=line_type) + 
+    labs(x=prior_lab) +
+    ylab("") +
+    theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 16),
+          axis.text=element_text(size = 10))
+  
+  # avoid premature termination
+  remove(rjags_model)
+  p
+}
+
+priors <- list(list("beta_0_15-a_0_15-b_0_15/full-intrxn-no-health-beta_0_15-a_0_15-b_0_15.Rdata",
+                    expression(beta~" ~ N(0,1/15), a ~ N(0,1/15), b ~ N(0,1/15)")),
+               list("beta_0_20-a_0_20-b_0_20/full-intrxn-no-health-alpha_0_1-beta_0_20-a_0_20-b_0_20.Rdata",
+                    expression(beta~" ~ N(0,1/20), a ~ N(0,1/20), b ~ N(0,1/20)")),
+               list("beta_0_25-a_0_25-b_0_25/full-intrxn-no-health-beta_0_25-a_0_25-b_0_25.Rdata",
+                    expression(beta~" ~ N(0,1/25), a ~ N(0,1/25), b ~ N(0,1/25)")))
+```
+
+```{r a sensitivity, cache=T}
+a_plots <- lapply(priors, function(x) generate_density_plot(x, "a"))
+a_plots[[4]] <- generate_density_plot("", 
+                                      "a",
+                                      final_model = T)
+```
+
+```{r a sensitivity plots display, fig.align="center", fig.width=6, fig.height=3}
+do.call("grid.arrange", 
+        c(a_plots, 
+          ncol=2,
+          top="Figure INSERT: Prior Sensitivity ~ a"))
+```
+
+```{r b sensitivity, cache=T}
+b_plots <- lapply(priors, function(x) generate_density_plot(x, "b"))
+b_plots[[4]] <- generate_density_plot("", 
+                                      "b",
+                                      final_model = T)
+```
+
+```{r b sensitivity plots display, fig.align="center", fig.width=6, fig.height=3}
+do.call("grid.arrange", 
+        c(b_plots, 
+          ncol=2,
+          top="Figure INSERT: Prior Sensitivity ~ b"))
+```
+
+With respect to traceplots, random scatter around the estimate and clear "mixing" between different chains indicate convergence. An ideal autocorrelation plot will peak at the beginning and quickly drop close to 0, which provides evidence that the iterations sufficiently explored the parameter space and weren't strongly dependent on one another. $\hat{R}$ values provide an estimate of convergence based on the variance of an estimated parameter between chains, and the variance within a chain. An $\hat{R}$ value close to 1 suggests convergence. Finally, the $n_{e\mathit{ff}}$ provides insight into whether our model has achieved stationarity, as it estimates the number of independent observations we obtained in our posterior draws.
 
 ### Random County Intercept Model
 
@@ -1705,33 +1705,13 @@ forestplot(rownames(pres.trump.forest.table[county.row, ]),
                             xlab  = gpar(fontfamily = "serif",fontsize=12)))
 ```
 
-```{r, eval=F}
-county.mod.vs.bayes.forest.table <- county.mod.forest.table[rownames(bayes.forest.table), ]
-
-forestplot(rownames(county.mod.vs.bayes.forest.table), 
-           mean  = cbind(county.mod.vs.bayes.forest.table$Estimate, bayes.forest.table$Estimate), 
-           lower = cbind(county.mod.vs.bayes.forest.table$Estimate - 1.96*county.mod.vs.bayes.forest.table$Std.Error, 
-                  bayes.forest.table$Lower),
-           upper = cbind(county.mod.vs.bayes.forest.table$Estimate + 1.96*county.mod.vs.bayes.forest.table$Std.Error, 
-                  bayes.forest.table$Upper),
-           line.margin = .2,
-           col = fpColors(box = c("blue", "darkred"),
-                          line = c("blue", "darkred")),
-           legend = c("Final", "N(0,50)"),
-           title="Figure INSERT: County Model vs Bayesian Model N(0,1/50)",
-           txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain", fontsize=10),
-                            label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
-                            ticks = gpar(fontfamily = "serif"),
-                            xlab  = gpar(fontfamily = "serif")))
-```
-
 ```{r Random Intercept Table Tau, fig.align = "center",warning=FALSE,echo=FALSE,cache=F}
 county.random.effects %>% knitr::kable(., format="latex", 
                                       escape = F, 
                                       booktabs = T, 
                                       linesep = "", 
                                       align = "c",
-                                      col.names=c("$\\tau^2$"),
+                                      col.names=c("$\\tau_0^2$"),
                                       caption="Random Effect Parameter Estimates") %>%
   kableExtra::kable_styling(latex_options = c("hold_position"))
 ```
@@ -1912,6 +1892,52 @@ forestplot(rownames(pres.trump.forest.table),
                             label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
                             ticks = gpar(fontfamily = "serif"),
                             xlab  = gpar(fontfamily = "serif")))
+```
+
+```{r remaining traceplots, fig.align="center", fig.height=5}
+tidybayes::gather_draws(mnar.final.model %>% as.mcmc(.), 
+                        alpha, 
+                        beta1, 
+                        beta2, 
+                        beta3, 
+                        beta4,
+                        beta5,
+                        beta6,
+                        beta7,
+                        beta8,
+                        beta9,
+                        beta10) %>% 
+  ungroup() %>% 
+  ggplot() + 
+  geom_line(aes(x = .iteration, y = .value, color = as.factor(.chain)), alpha = 0.7) + 
+  facet_grid(.variable~., scales = "free_y") + 
+  labs(title = bquote(atop(paste("Traceplots of ",
+                                alpha, ", ", 
+                                beta[1], ": Gender=Male, ", 
+                                beta[2], ": R/E=Asian, ",
+                                beta[3], ": R/E=Black, ",
+                                beta[4], ": R/E=Hispanic/Latino, ",
+                                beta[5], ": R/E=Other, "),
+                           paste(
+                                beta[6], ": Age x R/E=Asian, ",
+                                beta[7], ": Age x R/E=Black, ",
+                                beta[8], ": Age x R/E=Hispanic/Latino, ",
+                                beta[9], ": Age x R/E=Other, ",
+                                beta[10], ": Age x R/E=White"))), 
+       x = "Iteration", y = "Value", color = "Chain") +
+  theme(plot.title = element_text(size=8))
+```
+
+```{r remaining acf plots, message=F, warning=F, fig.height=5, fig.align="center"}
+plot_acf <- function(parameter, mod, show.y=FALSE) {
+  acf.p <- mod$BUGSoutput$sims.matrix %>% 
+    as_tibble() %>% 
+    pull(parameter)
+  acf(acf.p, main=parameter, xlab="", ylab="") 
+}
+par(mfrow = c(3, 4),oma=c(0,0,0,0))
+invisible(sapply(mu.params, 
+                 function(x) plot_acf(x, mnar.final.model)))
 ```
 
 ```{r results of county model table,warning=F,message=F,echo=FALSE}
