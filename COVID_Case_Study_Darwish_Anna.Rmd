@@ -811,17 +811,17 @@ The parameterization of this model is:
 
 $$
 \begin{aligned}
-log(\frac{M_{i}}{1-M_{i}}) = \beta_0 + \beta_1 * I(Sex_i = Male) +\sum_{r=1}^4 \beta_{3r} * I(Race.Ethnicity_i = r) \ + \\
+log(\frac{M_{i}}{1-M_{i}}) = \alpha + \beta_1 * I(Sex_i = Male) +\sum_{r=1}^4 \beta_{3r} * I(Race.Ethnicity_i = r) \ + \\
  \sum_{r=0}^4 \beta_{4r} * Age_i * I(Race.Ethnicity_i = r)
  \\
  log(\frac{P_{i}}{1-P_{i}}) = a + b * y_i
  \\
- y_i \sim Bern(M_i), \ \ \beta_0 \sim N(0, 1), \ \ \beta_i \sim N(0,0.05), \ \ a \sim N(0,0.05) , \ \ b \sim N(0,0.05)
+ y_i \sim Bern(M_i), \ \ \alpha \sim N(0, 1), \ \ \beta_i \sim N(0,0.1), \ \ a \sim N(0,0.05) , \ \ b \sim N(0,0.05)
 \end{aligned}
 $$
 In this case $M_i$ represents the probability individual $i$'s *ESDA* is missing, and $P_i$ retains its meaning from previous models. Similar to before, the *Race/Ethnicity* covariate has a coefficient for those identifying as Asian, Black, Hispanic/Latino, and Other, while the combined effect of *Age* and *Race/Ethnicity* includes a covariate for White residents. 
 
-In order to ensure convergence of this model, as estimates were unwieldy due to limited representation from non-White race/ethnic groups, I examined traceplots, autocorrelation plots of each of the parameters, and $\hat{R}$ and $n_{eff}$ values. Prior sensitivity was also conducted via inspection of the posterior distribution of our parameters under different prior assumptions. The ideal results of these posterior checks are more fully discussed in the *Results* section.
+Estimates in this model were unwieldy due to limited representation from non-White race/ethnic groups. In order to ensure convergence, I examined traceplots and autocorrelation plots of each of the parameters, along with their $\hat{R}$ and $n_{e\mathit{ff}}$ values. Prior sensitivity was also conducted via inspection of the posterior distribution of our parameters under different prior assumptions. The ideal results of these posterior checks are more fully discussed in the *Results* section.
 
 Finally, I explored a mixed effects model that used a random intercept for county. This was motivated by the fact that the counties in NC varied greatly in their response and adherence to social distancing measures [[18]][Bibliography]. Given that a county also often captures information regarding common demographics and political views, it may be able to substitute for other variables that are more expensive or difficult to collect on NC residents. 
 
@@ -831,7 +831,7 @@ $$
 \begin{aligned}
 log(\frac{P_{ij}}{1-P_{ij}}) = \alpha_0 + \alpha_j + \beta_{1} * Children_{ij} + \beta_2 * President.Trump_{ij} \ + \\
 \sum_{r=1}^4 \beta_{3r} * I(Race.Ethnicity_{ij} = r) + \sum_{r=0}^4 \beta_{4r} * Age_{ij} * I(Race.Ethnicity_{ij} = r) \\
-\alpha_j \sim N(0,\tau_0^2)
+\alpha_j \sim N(0,\tau^2)
 \end{aligned}
 $$
 
@@ -1338,7 +1338,8 @@ complete.case.mod <- glm(Social.Distancing.Adherence ~ Q19.20..Race...Ethnicity 
                            age_race_ethnicity_other +
                            age_race_ethnicity_white,
                          family=binomial,weights=cc.covid.df$weight,data=cc.covid.df)
-complete.case.table <- data.frame(summary(complete.case.mod)$coefficients) %>% select("Estimate", "Std..Error", "Pr...z..")
+complete.case.table <- data.frame(summary(complete.case.mod)$coefficients) %>% 
+  dplyr::select("Estimate", "Std..Error", "Pr...z..")
 colnames(complete.case.table) <- c("Estimate", "Std.Error", "P.Value")
 complete.case.table$Variables <- pres.trump.table$Variables
 complete.case.table <- complete.case.table[, c("Variables", "Estimate", "Std.Error", "P.Value")]
@@ -1420,7 +1421,6 @@ rownames(mcar.model.mice.estimates.table) <- mcar.model.mice.estimates.table$Var
 mcar.model.mice.estimates.forest.table <- generate_forest_plot_df(mcar.model.mice.estimates.table)
 ```
 
-
 ```{r load non ignorable model}
 # Called rjags_model
 load(file="beta_0_10-a_0_20-b_0_20/full-intrxn-no-health-alpha_0_1-beta_0_10-a_0_20-b_0_20.Rdata")
@@ -1466,27 +1466,6 @@ rownames(mnar.final.model.forest.table) <- c("Intercept",
                                   "Age x Race/Ethnicity = White")
 
 mnar.final.model.forest.table <- generate_forest_plot_df(mnar.final.model.forest.table)
-
-forestplot(rownames(mnar.final.model.forest.table), 
-           mean  = cbind(mcar.model.mice.estimates.forest.table$Estimate,
-                         mnar.final.model.forest.table$Estimate), 
-           lower = cbind(mcar.model.mice.estimates.forest.table$Estimate -
-                           1.96*mcar.model.mice.estimates.forest.table$Std.Error, 
-                         mnar.final.model.forest.table$Estimate-
-                           1.96*mnar.final.model.forest.table$Std.Error),
-           upper = cbind(mcar.model.mice.estimates.forest.table$Estimate +
-                           1.96*mcar.model.mice.estimates.forest.table$Std.Error,
-                         mnar.final.model.forest.table$Estimate +
-                           1.96*mnar.final.model.forest.table$Std.Error),
-           line.margin = .2,
-           col = fpColors(box = c("blue", "darkred"),
-                          line = c("blue", "darkred")),
-           legend = c("Final", "MNAR"),
-           title="Figure INSERT: Final Model vs MNAR Model",
-           txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain", fontsize=10),
-                            label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
-                            ticks = gpar(fontfamily = "serif"),
-                            xlab  = gpar(fontfamily = "serif")))
 ```
 
 ```{r traceplot, fig.height=2, fig.align='center'}
@@ -1497,8 +1476,11 @@ tidybayes::gather_draws(mnar.final.model %>% as.mcmc(.),
   ggplot() + 
   geom_line(aes(x = .iteration, y = .value, color = as.factor(.chain)), alpha = 0.7) + 
   facet_grid(.variable~., scales = "free_y") + 
-  labs(title = "Traceplots of a and b", 
-       x = "Iteration", y = "Value", color = "Chain")
+  labs(title = "Figure 5: Traceplots of a and b", 
+       x = "", y = "", color = "Chain") +
+  theme(plot.title = element_text(hjust = 0.5,
+                                    vjust = -0.5, 
+                                    size = 12))
 ```
 
 ```{r rhat and neff}
@@ -1518,28 +1500,34 @@ mnar.final.model.df[c(mu.params,
                row.names=F,
                col.names=c("$\\alpha$",
                            "$\\beta_1$",
-                           "$\\beta_2$",
-                           "$\\beta_3$",
-                           "$\\beta_4$",
-                           "$\\beta_5$",
-                           "$\\beta_6$",
-                           "$\\beta_7$",
-                           "$\\beta_8$",
-                           "$\\beta_9$",
-                           "$\\beta_{10}$",
+                           "$\\beta_21$",
+                           "$\\beta_22$",
+                           "$\\beta_23$",
+                           "$\\beta_24$",
+                           "$\\beta_30$",
+                           "$\\beta_31$",
+                           "$\\beta_32$",
+                           "$\\beta_33$",
+                           "$\\beta_{34}$",
                            "a",
                            "b"),
                caption="$\\hat{R}$ and $N_{e\\mathit{ff}}$ Values") %>%
   kableExtra::kable_styling(latex_options = c("hold_position"))
 ```
 
+Figure 5 displays traceplots for our final model's a and b parameter chains. The random scatter around the mean estimate, along with clear "mixing" between the different chains, indicate convergence for these parameters. Please reference Figure INSERT in the Appendix for the remaining traceplots for our final model. Similar plots were generated for other prior combinations that were examined to ensure convergence prior to comparison.
+
+Figures INSERT in the Appendix contain our auto-correlation plots, where each peak at the beginning and quickly drop close to 0 as the lag increases. This provides evidence that the iterations sufficiently expxlored the parameter space, as they were not strongly dependent upon one another.
+
+Table 5 summarizes our $\hat{R}$ and $n_{e\mathit{ff}}$ values across all of the parameters and covariates. An $\hat{R}$ value between 1 and 1.05 suggests convergence, which holds true for all of the table entries. Finally, the $n_{e\mathit{ff}}$ provides insight into whether our model has achieved stationarity, as it estimates the number of independent observations we obtained in our posterior draws. An arbitrary cutoff for acceptable $n_{e\mathit{ff}}$ values is between 150 and 200, which each of our parameters also satisfy.
+
 ```{r density plots over priors}
-generate_density_plot <- function(prior_meta,
+generate_density_df <- function(prior_meta,
                                   param,
                                   final_model=F){
   if(final_model){
     rjags_model <- mnar.final.model
-    prior_lab <- expression(beta~" ~ N(0,1/10), a ~ N(0,1/20), b ~ N(0,1/20)")
+    prior_lab <- " ~ N(0,1/10); a,b ~ N(0,1/20)"
     line_type = "solid"
   }
   else{
@@ -1553,15 +1541,8 @@ generate_density_plot <- function(prior_meta,
   p <- rjags_model$BUGSoutput$sims.matrix %>% 
     as.data.frame() %>%
     dplyr::select((!!as.symbol(param))) %>%
-    ggplot() + 
-    geom_density(aes(x = (!!as.symbol(param)))) + 
-    geom_vline(xintercept = mnar.final.model.df[param, "mean"], 
-               color = "red",
-               linetype=line_type) + 
-    labs(x=prior_lab) +
-    ylab("") +
-    theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 16),
-          axis.text=element_text(size = 10))
+    mutate(prior_name=prior_lab,
+           line_aes=line_type)
   
   # avoid premature termination
   remove(rjags_model)
@@ -1569,42 +1550,114 @@ generate_density_plot <- function(prior_meta,
 }
 
 priors <- list(list("beta_0_15-a_0_15-b_0_15/full-intrxn-no-health-beta_0_15-a_0_15-b_0_15.Rdata",
-                    expression(beta~" ~ N(0,1/15), a ~ N(0,1/15), b ~ N(0,1/15)")),
+                    " ~ N(0,1/15); a,b ~ N(0,1/15)"),
                list("beta_0_20-a_0_20-b_0_20/full-intrxn-no-health-alpha_0_1-beta_0_20-a_0_20-b_0_20.Rdata",
-                    expression(beta~" ~ N(0,1/20), a ~ N(0,1/20), b ~ N(0,1/20)")),
+                    " ~ N(0,1/20); a,b ~ N(0,1/20)"),
                list("beta_0_25-a_0_25-b_0_25/full-intrxn-no-health-beta_0_25-a_0_25-b_0_25.Rdata",
-                    expression(beta~" ~ N(0,1/25), a ~ N(0,1/25), b ~ N(0,1/25)")))
+                    " ~ N(0,1/25); a,b ~ N(0,1/25)"))
 ```
 
-```{r a sensitivity, cache=T}
-a_plots <- lapply(priors, function(x) generate_density_plot(x, "a"))
-a_plots[[4]] <- generate_density_plot("", 
+```{r a sensitivity, cache=F}
+a_df <- lapply(priors, function(x) generate_density_df(x, "a")) %>% bind_rows(.)
+a_df <- rbind(a_df, generate_density_df("", 
                                       "a",
-                                      final_model = T)
+                                      final_model = T))
 ```
 
-```{r a sensitivity plots display, fig.align="center", fig.width=6, fig.height=3}
-do.call("grid.arrange", 
-        c(a_plots, 
-          ncol=2,
-          top="Figure INSERT: Prior Sensitivity ~ a"))
+```{r a sensitivity plots display, fig.align="center", fig.width=5, fig.height=2.5}
+a_prior_plot <- a_df  %>% 
+  ggplot() + 
+  geom_density(aes(x = a)) + 
+  geom_vline(aes(xintercept = mnar.final.model.df["a", "mean"],
+                 linetype=line_aes),
+             color = "red") + 
+  labs(title = "Figure 6",
+       x = "a",
+       y="") +  
+  facet_wrap(prior_name~.,  
+             labeller=label_bquote(beta~.(prior_name)),
+             scales = "free_y", 
+             nrow = 2) + 
+  theme(legend.position="none")
 ```
 
-```{r b sensitivity, cache=T}
-b_plots <- lapply(priors, function(x) generate_density_plot(x, "b"))
-b_plots[[4]] <- generate_density_plot("", 
+```{r b sensitivity, cache=F}
+b_df <- lapply(priors, function(x) generate_density_df(x, "b")) %>% bind_rows(.)
+b_df <- rbind(b_df, generate_density_df("", 
                                       "b",
-                                      final_model = T)
+                                      final_model = T))
 ```
 
-```{r b sensitivity plots display, fig.align="center", fig.width=6, fig.height=3}
-do.call("grid.arrange", 
-        c(b_plots, 
-          ncol=2,
-          top="Figure INSERT: Prior Sensitivity ~ b"))
+```{r b sensitivity plots display, fig.align="center", fig.width=8.5, fig.height=3.5}
+b_prior_plot <- b_df  %>% 
+  ggplot() + 
+  geom_density(aes(x = b)) + 
+  geom_vline(aes(xintercept = mnar.final.model.df["b", "mean"],
+                 linetype=line_aes),
+             color = "red") + 
+  labs(title = "",
+       x = "b",
+       y="") +  
+  facet_wrap(prior_name~.,  
+             labeller=label_bquote(beta~.(prior_name)),
+             scales = "free_y", 
+             nrow = 2) + 
+  theme(legend.position="none")
+grid.arrange(arrangeGrob(a_prior_plot,
+                         b_prior_plot,
+                         nrow=1))
 ```
 
-With respect to traceplots, random scatter around the estimate and clear "mixing" between different chains indicate convergence. An ideal autocorrelation plot will peak at the beginning and quickly drop close to 0, which provides evidence that the iterations sufficiently explored the parameter space and weren't strongly dependent on one another. $\hat{R}$ values provide an estimate of convergence based on the variance of an estimated parameter between chains, and the variance within a chain. An $\hat{R}$ value close to 1 suggests convergence. Finally, the $n_{e\mathit{ff}}$ provides insight into whether our model has achieved stationarity, as it estimates the number of independent observations we obtained in our posterior draws.
+In Figure 6, we explore the posterior distributions of $a$, the $b$ across different priors on the demographic co-variates, along with $a$ and $b$ themselves. In both figures, the density plot with a dashed line is the posterior density plot of our final model. Given that our posterior estimate for both parameters roughly fall at the peaks for other priors as well, we have sufficient evidence that our parameters are insensitive to prior choice. Please refer to Figures INSERT for the remaining prior sensitivity plots on the demographic covariate terms, and note that each model had the same prior $N(0,1)$ prior on the intercept $\alpha$.
+
+```{r, fig.align="center"}
+forestplot(rownames(mnar.final.model.forest.table), 
+           mean  = cbind(mcar.model.mice.estimates.forest.table$Estimate,
+                         mnar.final.model.forest.table$Estimate), 
+           lower = cbind(mcar.model.mice.estimates.forest.table$Estimate -
+                           1.96*mcar.model.mice.estimates.forest.table$Std.Error, 
+                         mnar.final.model.forest.table$Estimate-
+                           1.96*mnar.final.model.forest.table$Std.Error),
+           upper = cbind(mcar.model.mice.estimates.forest.table$Estimate +
+                           1.96*mcar.model.mice.estimates.forest.table$Std.Error,
+                         mnar.final.model.forest.table$Estimate +
+                           1.96*mnar.final.model.forest.table$Std.Error),
+           line.margin = .2,
+           col = fpColors(box = c("blue", "darkred"),
+                          line = c("blue", "darkred")),
+           legend = c("Final", "MNAR"),
+           title="Figure 7: Final Model vs MNAR Model",
+           txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain", fontsize=10),
+                            label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
+                            ticks = gpar(fontfamily = "serif"),
+                            xlab  = gpar(fontfamily = "serif")))
+```
+
+Figure 7 summarizes a forestplot comparing the MNAR model's estimates to the one generated using the same covariates (age, gender, and race/ethnic identity) with the first modeling approach. This highlights key disagreements among all of the racial/ethnic estimates, except for those who identified as "Other". Specifically, the final model estimated that the combined effect of Age and being White was slightly positive, as was that of Age and being Black. In contrast, this model estiamtes these combined effects to be negative. Even more surprising, the MNAR model is more consistent with our exploratory data analysis (see Figure 1) than the *mice* model is. 
+
+There are multiple reasons for this discrepancy. Firstly, in parameterizing the second level of MNAR model, it isn't suprising that our demographic covariates would converge to slightly different values. Further, the poor representation among Asian, Hispanic/Latino, and those who identified as "Other" compounded instability in both modeling approaches. Another insight this discrepancy offers is that the effects of race/ethnicity on social distancing adherence are quite complex and require information from other available covariates to better understand the response.
+
+For example, as we can see in Table 6 below, the distribution of President Trump Approval Score, for those participants with an available value, is highly dependent on the race/ethnicity identity of the North Carolinian resident. Given the limitation that our MNAR approach only handled fully populated covariates, we can not draw any specific conclusions from the variable estimates relative to our final model.
+
+```{r, fig.align="center"}
+covid.df %>%
+  dplyr::rename(., Race.Ethnicity=Q19.20..Race...Ethnicity) %>%
+  dplyr::group_by(Race.Ethnicity) %>%
+  dplyr::summarize(`Mean Score` = round(mean(trump_approve_score, 
+                                                na.rm=T),2),
+                   .groups="drop") %>%
+  pander(., "President Trump Approval Score Summmary Across Racial/Ethnicity Groups")
+```
+
+```{r, eval=F}
+covid.df %>%
+  dplyr::rename(., Children=Q5..Children.in.HH) %>%
+  dplyr::group_by(Children) %>%
+  dplyr::summarize(`Mean Score` = round(mean(trump_approve_score, 
+                                                na.rm=T),2),
+                   .groups="drop") %>%
+  pander(., "President Trump Approval Score Summmary Across Number of Children in Household")
+```
 
 ### Random County Intercept Model
 
@@ -1711,7 +1764,7 @@ county.random.effects %>% knitr::kable(., format="latex",
                                       booktabs = T, 
                                       linesep = "", 
                                       align = "c",
-                                      col.names=c("$\\tau_0^2$"),
+                                      col.names=c("$\\tau^2$"),
                                       caption="Random Effect Parameter Estimates") %>%
   kableExtra::kable_styling(latex_options = c("hold_position"))
 ```
@@ -1720,7 +1773,7 @@ The coefficient estimates and confusion matrix associated with this model are lo
 
 For those variables that are present in this model, the forest plot in Figure 5 compares the estimates and their precision to those of the final model. There appears to be generally wider confidence intervals for the random county intercept approach, which is unsurprising given the amount of surveys dropped in order to generate this model. In particular, there was little certainty surrounding most of the *Race/Ethnicity* groups.
 
-Table 5 summarizes our estimate of $\tau_0^2$, which is the estimated variance of our random county intercepts, while Figure 13 in the Appendix displays a forest plot of the county intercepts. The F1-score of this model is approximately `r round(county.f1.score,3)`, and the false positive rate is `r round(county.false.positive,3)`. It is important to keep in mind that this slightly improved performance is incomprable to our final model, as it uses a completely different range of data. However, this model does present key insights into the abilities of politically and demographically contrasting counties to encourage social distancing.
+Table 5 summarizes our estimate of $\tau^2$, which is the estimated variance of our random county intercepts, while Figure 13 in the Appendix displays a forest plot of the county intercepts. The F1-score of this model is approximately `r round(county.f1.score,3)`, and the false positive rate is `r round(county.false.positive,3)`. It is important to keep in mind that this slightly improved performance is incomprable to our final model, as it uses a completely different range of data. However, this model does present key insights into the abilities of politically and demographically contrasting counties to encourage social distancing.
 
 Below are two heatmaps that depict estimated county intercepts (Figure 6a) and the 2020 President Trump vote share percentage (Figure 6b). In Figure 6a, a darker county corresponds to a higher intercept, and therefore a higher likelihood to socially distance. In Figure 6b, a darker county corresponds to a higher President Trump vote share percentage [[19]][Bibliography]. This data was sourced from politico.com and is listed in the Supplementary Links section. The indices on the figures reference specific counties we discuss in this section: Orange County (1), Durham County (2), Stokes County (3), and Davidson County (4). 
 
@@ -1776,6 +1829,7 @@ ggplot(data=mapdata) +
   annotate(geom = "text", x=-80.2, y=35.82, 
            label = "4", size = 3.5, color="white")
 ```
+
 Orange County (1), whose Chapel Hill residents tend to lean left and may align more strongly with stricter policies on social distancing, has one of the highest intercepts and lowest President Trump vote share percentages. On the other hand, heavily Republican Stokes County (3) has one of the lowest estimated intercepts. In April 2020, a Unacast study assigned letter grades to states and their counties based upon their social distancing adherence [[20]][Bibliography]. While not all of the counties align with these relative standings, which is likely a consequence of small sample issues within each county, Stokes County was one of 39 counties to receive an F. 
 
 It is important to mention this trend varies across counties, such as Durham County (2) and Davidson County (4). The latter is an interesting case to explore, given our current evidence that a higher President Trump approval score is not related to an increased likelihood to socially distance. One potential explanation for this is Davidson County's initiative to offer grants to support small businesses that adhere to COVID-19 guidelines [[21]][Bibliography]. Therefore, it may be useful to develop stronger systems of support in counties with lower levels of adherence.
@@ -1800,7 +1854,7 @@ Another limitation to this analysis is that the final model does a rather poor j
 
 *ESDA* was a simplification to create an objective cut-off for what qualifies as social distancing. While there may be obvious cases that breach the general perception on social distancing guidelines, there are gray areas that evoke controversy over what is a violation. On the other hand, *SSDA* offers participants the ability to answer based on their own understanding of social distancing, but this variable was impractical. Firstly, there many cases of participants stating they were social distancing, despite admitting to participating in several large gatherings or non-distanced encounters with friends. Secondly, there was little to model, as the overwhelming proportion of non-missing responses were "Yes". We witnessed this issue with *ESDA* as well, given that all of the models had a rather high false positive rate.
 
-Finally, the predictors themselves also limited the scope of this analysis. Firstly, there was poor representation among the various race/ethnic groups encoded in the survey. This caused issues with inflated standard errors, as well as convergence issues in the Bayesian models. While collapsing groups can offset these difficulties, there was no clear or logical manner to do so among the five groups. Further, each group's history with medical practices has been shown to uniquely influence their level of trust in U.S. healthcare, such as Black and Indigenous Americans' experiences with medical abuse [[22]][Bibliography].
+Finally, the predictors themselves also limited the scope of this analysis. Firstly, there was poor representation among the various race/ethnic groups encoded in the survey. This caused issues with inflated standard errors, as well as convergence issues in the MNAR models. While collapsing groups can offset these difficulties, there was no clear or logical manner to do so among the five groups. Further, each group's history with medical practices has been shown to uniquely influence their level of trust in U.S. healthcare, such as Black and Indigenous Americans' experiences with medical abuse [[22]][Bibliography].
 
 Another predictor that proved troublesome was the President Trump Approval Score variable. The variable in of itself extrapolates voter history information into a score of that participant's perception of his COVID-19 policies. While there is undoubtedly a strong relationship there, many participants' actual beliefs may not have reflected their 2016 decision. Further, the longevity of this variable is questionable, as Joseph R Biden became the 46th president on January 20, 2021. While this diminishes the predictive power of the models in their current state, it is critical to study how the rhetoric of a leader may influence the behavior of citizens during a crisis. The polarization between Democrats and Republicans will likely continue to resurface for many of the future policies dealing with the pandemic and its aftermath [[23]][Bibliography].
 
