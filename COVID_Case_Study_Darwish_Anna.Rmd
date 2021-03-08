@@ -1423,7 +1423,7 @@ mcar.model.mice.estimates.forest.table <- generate_forest_plot_df(mcar.model.mic
 
 ```{r load non ignorable model}
 # Called rjags_model
-load(file="beta_0_10-a_0_20-b_0_20/full-intrxn-no-health-alpha_0_1-beta_0_10-a_0_20-b_0_20.Rdata")
+load(file="beta_0_5-a_0_15-b_0_15/full-intrxn-no-health-beta_0_5-a_0_15-b_0_15.Rdata")
 mnar.final.model <- rjags_model
 
 mnar.final.model.df <- mnar.final.model$BUGSoutput$summary %>% 
@@ -1527,7 +1527,7 @@ generate_density_df <- function(prior_meta,
                                   final_model=F){
   if(final_model){
     rjags_model <- mnar.final.model
-    prior_lab <- " ~ N(0,1/10); a,b ~ N(0,1/20)"
+    prior_lab <- " ~ N(0,1/5); a,b ~ N(0,1/15)"
     line_type = "solid"
   }
   else{
@@ -1549,7 +1549,9 @@ generate_density_df <- function(prior_meta,
   p
 }
 
-priors <- list(list("beta_0_15-a_0_15-b_0_15/full-intrxn-no-health-beta_0_15-a_0_15-b_0_15.Rdata",
+priors <- list(list("beta_0_10-a_0_20-b_0_20/full-intrxn-no-health-alpha_0_1-beta_0_10-a_0_20-b_0_20.Rdata",
+                    " ~ N(0,1/10); a,b ~ N(0,1/20)"),
+               list("beta_0_15-a_0_15-b_0_15/full-intrxn-no-health-beta_0_15-a_0_15-b_0_15.Rdata",
                     " ~ N(0,1/15); a,b ~ N(0,1/15)"),
                list("beta_0_20-a_0_20-b_0_20/full-intrxn-no-health-alpha_0_1-beta_0_20-a_0_20-b_0_20.Rdata",
                     " ~ N(0,1/20); a,b ~ N(0,1/20)"),
@@ -1588,7 +1590,7 @@ b_df <- rbind(b_df, generate_density_df("",
                                       final_model = T))
 ```
 
-```{r b sensitivity plots display, fig.align="center", fig.width=8.5, fig.height=3.5}
+```{r b sensitivity plots display, fig.align="center", fig.width=9, fig.height=3.5}
 b_prior_plot <- b_df  %>% 
   ggplot() + 
   geom_density(aes(x = b)) + 
