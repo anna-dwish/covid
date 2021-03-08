@@ -383,11 +383,11 @@ Some of the questions asked included the number of people the respondent had fac
 
 In order to glean any accurate estimates and models from this survey data, the surveyors also re-weighted the data in order to be reflective of the North Carolina adult (>=18) population. For this reason, any participant who did not answer questions 2, 3, and 19 or did not have an associated voter registration file, was discarded by the surveyors. These questions provided the age, gender, and racial/ethnic identity of the participant and were used to calculate the weight.
 
-This survey was conducted in two forms: individuals who answered automated (IVR) surveys (via landlines), and individuals who answered (live) cell-phone survey calls. The phone numbers selected for this study came from "commercial appends to voter registration data, in addition to commercially collected numbers of non-registered individuals consolidated by TargetSmart". Note that for numerical questions, respondents contacted via IVR surveys would have to answer by punching in a single digit. For this reason, all numerical responses were limited to 0,1,2,...,9. For a full data dictionary, please see Table 11 in the Appendix.
+This survey was conducted in two forms: individuals who answered automated (IVR) surveys (via landlines), and individuals who answered (live) cell-phone survey calls. The phone numbers selected for this study came from "commercial appends to voter registration data, in addition to commercially collected numbers of non-registered individuals consolidated by TargetSmart". Note that for numerical questions, respondents contacted via IVR surveys would have to answer by punching in a single digit. For this reason, all numerical responses were limited to 0,1,2,...,9. For a full data dictionary, please see Table 13 in the Appendix.
 
 ## Missing Data Overview & Handling
 
-Of the 7582 total surveys conducted with unique participants, 1763 were incomplete. Of the 1763 incomplete surveys, 1761 of them appear to be breakoffs, meaning the participant ended the survey mid-interview and did not complete the remaining questions. Frequent causes for breakoff include "topic, sensitivity of questions, burden of answering the question, format of the questions, number of questions on a page, and layout" [[11]][Bibliography]. In the Appendix, please reference Table 12 to see a distribution of the question numbers that triggered the breakoff. The top four most frequent breakoffs, in order, were *Q4. Number of People in HH*, *Q6. Non-HH Face to Face Count*, *Q11b. Within 10 Ft of a Friend in Last 24 Hrs*, and *Q10. Times in Group > 20 in Last Week*, where *HH* stands for household.
+Of the 7582 total surveys conducted with unique participants, 1763 were incomplete. Of the 1763 incomplete surveys, 1761 of them appear to be breakoffs, meaning the participant ended the survey mid-interview and did not complete the remaining questions. Frequent causes for breakoff include "topic, sensitivity of questions, burden of answering the question, format of the questions, number of questions on a page, and layout" [[11]][Bibliography]. In the Appendix, please reference Table 14 to see a distribution of the question numbers that triggered the breakoff. The top four most frequent breakoffs, in order, were *Q4. Number of People in HH*, *Q6. Non-HH Face to Face Count*, *Q11b. Within 10 Ft of a Friend in Last 24 Hrs*, and *Q10. Times in Group > 20 in Last Week*, where *HH* stands for household.
 
 Because of the weighting requirements described in the previous section, question 4 is the earliest point any observation in the final dataset would be a breakoff point, as the racial/ethnic identity questions came at the end. Three surveys were completely empty, except for demographic information linked to their voter registration files, which were discarded.
 
@@ -399,7 +399,7 @@ While question 13 of the survey was: "Are you currently practicing social distan
 
 The new response variable was generated as follows: a respondent will be classified as having adhered to social distancing policies if they either did not have any non-household face to face encounters or ensured they stayed at least 6+ feet away in those encounters. This equates to answering 0 for question 6 or reporting the same number of encounters for questions 6 and 7.
 
-However, even if a respondent did maintain at least 6+ feet away in these encounters, a respondent will be classified as having violated social distancing policies if one or more of these encounters involved over 20 people. This equates to answering with any value greater than 0 for question 10. Finally, participants who ended the survey before completion at a question pertinent to social distancing guidelines (see Table 11 in the Appendix) were labeled as violating social distancing measures. This operates under the assumption the surveyee had violated the social distancing guideline outlined in that question. Sensitivity analysis to this decision is discussed more fully later on in the paper.
+However, even if a respondent did maintain at least 6+ feet away in these encounters, a respondent will be classified as having violated social distancing policies if one or more of these encounters involved over 20 people. This equates to answering with any value greater than 0 for question 10. Finally, participants who ended the survey before completion at a question pertinent to social distancing guidelines (see Table 13 in the Appendix) were labeled as violating social distancing measures. This operates under the assumption the surveyee had violated the social distancing guideline outlined in that question. Sensitivity analysis to this decision is discussed more fully later on in the paper.
 
 The aforementioned calculations and breakoff assumption yielded full coverage for the new response variable. For the remainder of this study, I will refer to this new response variable as *Evaluated Social Distancing Adherence (ESDA)* and survey question 13 as *Self-Reported Social Distancing Adherence (SSDA)*.
 
@@ -442,7 +442,7 @@ kable(covid.df.sda.summary, escape = F, caption = "Evaluated vs Self-Reported So
 
 ## Predictor Variables
 
-The following variables will be examined in this study. Please see Table 11 in the Appendix for more details on their meanings and values:
+The following variables will be examined in this study. Please see Table 13 in the Appendix for more details on their meanings and values:
 
 a) **President Trump Approval Score**: This value indicates the estimated respondents' level of approval of President Trump's COVID-19 policies from a scale of 1-5 (5 meaning highest approval) and was predicted by Clarity Campaigns. The prediction was based on voter file records for respondents who were registered to vote, and is the only covariate included that was not contained within the actual survey itself.
 b) **Age**: The age in years of the participant.
@@ -668,7 +668,7 @@ grid.arrange(arrangeGrob(p1 + theme(legend.position="none"),
 
 ```
 
-The following plots provide a brief overview of *Evaluated Social Distancing Adherence* over a few notable variables of interest: *President Trump Approval Score*, *Children in Household*, *Race/Ethnic Identity*, and *Age*. Please see Figure 14 in the Appendix for the remaining *ESDA* plots, and note that both of these figures were generated from one of many full imputations. The steps taken to develop these imputations is discussed in the *Methods* section.
+The following plots provide a brief overview of *Evaluated Social Distancing Adherence* over a few notable variables of interest: *President Trump Approval Score*, *Children in Household*, *Race/Ethnic Identity*, and *Age*. Please see Figure 19 in the Appendix for the remaining exploratory plots, and note that both of these figures were generated from one of many full imputations. The steps taken to develop these imputations is discussed in the *Methods* section.
 
 Firstly, from the top left plot, there does not appear to be significant differences in *ESDA* across different levels of approval scores of President Trump. Secondly, we can see in the upper-right plot that either participants with no children in their houeshold or 3+ children in their household were slightly less likely to be socially distancing. While it makes sense that larger households would struggle more to adhere to guidelines, it is difficult to explain the case of 0 children as this encompasses a wide variety of living situations [[15]][Bibliography]. From the lower-left plot, it appears as though Asian identifying participants had a higher rate of *ESDA*, while Black participants and those identifying as "Other" had a slightly lower rate of *ESDA*. An important point to keep in mind here is that Black and Indigenous people are much more likely to be front-line workers[[15]][Bibliography], which makes social distancing quite challenging. Finally, it appears as though the median age of participants that were adhering to social distancing rules were slightly younger than those who were not. However, these two barplots are largely the same.
 
@@ -678,7 +678,7 @@ Firstly, from the top left plot, there does not appear to be significant differe
 
 To ensure independence among observations, I took the most recent survey submission for each unique participant in this dataset. Given that it took time for many people to understand the gravity of COVID-19, along with the spread of information on best practices, this decision relies on the assumption that later surveys are more representative of residents' current behaviors. Additionally, every frequentist model considers the sampling weight associated with each participant via the weights parameter in each model function.
 
-The first step in our methodology will be addressing the missing data. In order to fill in the missing predictor variables, I used a multiple imputation approach on the available demographic data with the *mice* package. This uses multiple linear and logistic regression to populate variables with missing data. An unfortunate limitation with this approach is that it makes the assumption that the data is missing at random, conditional on other measured data. This could be a stretch as it appears to be missing not at random, which was discussed in the *Missing Data Overview & Handling* section. However, we can examine the reliability of these estimates with sensitivity analysis [[16]][Bibliography]. By conducting multiple iterations of imputation, it is possible to understand the uncertainty with regards to our imputation method. Per the standard rule of using the percentage of missing data as the number of iterations as percentage of missing data, I conducted 25 iterations of missing data imputation. Note that all aforementioned exploratory analysis plots (Figures 1 and 14) stem from the first imputation.
+The first step in our methodology will be addressing the missing data. In order to fill in the missing predictor variables, I used a multiple imputation approach on the available demographic data with the *mice* package. This uses multiple linear and logistic regression to populate variables with missing data. An unfortunate limitation with this approach is that it makes the assumption that the data is missing at random, conditional on other measured data. This could be a stretch as it appears to be missing not at random, which was discussed in the *Missing Data Overview & Handling* section. However, we can examine the reliability of these estimates with sensitivity analysis [[16]][Bibliography]. By conducting multiple iterations of imputation, it is possible to understand the uncertainty with regards to our imputation method. Per the standard rule of using the percentage of missing data as the number of iterations as percentage of missing data, I conducted 25 iterations of missing data imputation. Note that all aforementioned exploratory analysis plots (Figures 1 and 19) stem from the first imputation.
 
 For each of the 25 imputations, I began with a full model of all demographic covariates, excluding the President Trump approval score. As a reminder, these were: *Age*, *Gender*, *Number of People in Household*, *Children in Household*, *College Degree*, and *Race/Ethnicity*. Using the *glmnet* package, I conducted lasso regression to determine which covariates were deemed significant for that particular imputation. Table 3 shows each of these main-effect only models, along with the number of imputations that yielded that model. Note that this step was strictly used to determine which main effects appear to be most useful and did not determine the final model. All of of these models were some combination of main effects from *Age*, *Children in Household* (labeled as Children in all model summary tables), *College Degree*, and *Race/Ethnicity*.
 
@@ -801,18 +801,18 @@ log(\frac{P_{i}}{1-P_{i}}) = \beta_0 + \beta_1 * I(Sex_i = Male) + \beta_2 * I(C
 \end{aligned}
 $$
 
-In addition to the sensitivity analysis involved in creating models across 25 different imputations, I also recreated the final President Trump Approval Score model using the *mice* package to impute values for our response prior to incorporating the breakoff point assumption. This is a classical MAR approach, as we use the available co-variates to populate the response values. In order to establish a baseline for expected performance, I also recreated this final model via a complete case approach. The coefficient estimates of the final model, the sensitivity model, and a complete case approach model are located in Tables 7, 8, and 9, respectively. Random forest plots comparing the coefficient estimates from the latter two models to those of the final one are located in Figures 3 and 10, respectively.
+In addition to the sensitivity analysis involved in creating models across 25 different imputations, I also recreated the final President Trump Approval Score model using the *mice* package to impute values for our response prior to incorporating the breakoff point assumption. This is a classical MAR approach, as we use the available co-variates to populate the response values. In order to establish a baseline for expected performance, I also recreated this final model via a complete case approach. The coefficient estimates of the final model, the sensitivity model, and a complete case approach model are located in Tables 9, 10, and 11, respectively. Random forest plots comparing the coefficient estimates from the latter two models to those of the final one are located in Figures 3 and 13, respectively.
 
 While the final model incorporates missingness information directly into the response, it relies on a strong assumption with respect to the nature of the missingness. For this reason, I also created a non-ignorable missing data selection model, where I first use the complete demographic covariates (age, race/ethnicity, and gender) to predict the likelihood that the *ESDA* of the surveyee is missing. The next level then relates that likelihood to the likelihood that the surveyee is social distancing. 
 
-While prior selection built on previous literature is often a key component of Bayesian modeling, the novelty of pandemic behaviors did not sufficiently align with existing literature on adherence to other official health recommendations. For this reason, our final model's prior, along with those used for prior sensitivity analysis, are relatively non-informative. Note that the variance of the priors are relatively low due to the scale of the response. The *Results* section contains a more thorough discussion on prior selection.
+While prior selection built on previous literature is often a key component of Bayesian modeling, the novelty of pandemic behaviors did not sufficiently align with existing literature on other official health recommendations, such as wearing a seatbelt or getting the flu vaccine. For this reason, our final model's prior, along with those used for prior sensitivity analysis, are relatively non-informative. Note that the variance of the priors are relatively low due to the scale of the response. The *Results* section contains a more thorough anaysis of the other priors.
 
 The parameterization of this model is:
 
 $$
 \begin{aligned}
-log(\frac{M_{i}}{1-M_{i}}) = \alpha + \beta_1 * I(Sex_i = Male) +\sum_{r=1}^4 \beta_{3r} * I(Race.Ethnicity_i = r) \ + \\
- \sum_{r=0}^4 \beta_{4r} * Age_i * I(Race.Ethnicity_i = r)
+log(\frac{M_{i}}{1-M_{i}}) = \alpha + \beta_1 * I(Sex_i = Male) +\sum_{r=1}^4 \beta_{2r} * I(Race.Ethnicity_i = r) \ + \\
+ \sum_{r=0}^4 \beta_{3r} * Age_i * I(Race.Ethnicity_i = r)
  \\
  log(\frac{P_{i}}{1-P_{i}}) = a + b * y_i
  \\
@@ -821,7 +821,7 @@ log(\frac{M_{i}}{1-M_{i}}) = \alpha + \beta_1 * I(Sex_i = Male) +\sum_{r=1}^4 \b
 $$
 In this case $M_i$ represents the probability individual $i$'s *ESDA* is missing, and $P_i$ retains its meaning from previous models. Similar to before, the *Race/Ethnicity* covariate has a coefficient for those identifying as Asian, Black, Hispanic/Latino, and Other, while the combined effect of *Age* and *Race/Ethnicity* includes a covariate for White residents. 
 
-Estimates in this model were unwieldy due to limited representation from non-White race/ethnic groups. In order to ensure convergence, I examined traceplots and autocorrelation plots of each of the parameters, along with their $\hat{R}$ and $n_{e\mathit{ff}}$ values. Prior sensitivity was also conducted via inspection of the posterior distribution of our parameters under different prior assumptions. The ideal results of these posterior checks are more fully discussed in the *Results* section.
+Estimates in this model were unwieldy due to limited representation from non-White race/ethnic groups. In order to ensure convergence, I examined traceplots and autocorrelation plots for each of the parameters, along with their $\hat{R}$ and $n_{e\mathit{ff}}$ values. Prior sensitivity was also conducted via inspection of the posterior distribution of our parameters under different prior assumptions. The ideal results of these posterior checks are more fully discussed in the *Results* section.
 
 Finally, I explored a mixed effects model that used a random intercept for county. This was motivated by the fact that the counties in NC varied greatly in their response and adherence to social distancing measures [[18]][Bibliography]. Given that a county also often captures information regarding common demographics and political views, it may be able to substitute for other variables that are more expensive or difficult to collect on NC residents. 
 
@@ -829,8 +829,8 @@ One significant drawback to this model is that county is missing from 1710 parti
 
 $$ 
 \begin{aligned}
-log(\frac{P_{ij}}{1-P_{ij}}) = \alpha_0 + \alpha_j + \beta_{1} * Children_{ij} + \beta_2 * President.Trump_{ij} \ + \\
-\sum_{r=1}^4 \beta_{3r} * I(Race.Ethnicity_{ij} = r) + \sum_{r=0}^4 \beta_{4r} * Age_{ij} * I(Race.Ethnicity_{ij} = r) \\
+log(\frac{P_{ij}}{1-P_{ij}}) = \alpha_0 + \alpha_j + \beta_{1} * I(Sex_{ij}=Male) + \beta_{2} * Children_{ij} + \beta_3 * President.Trump_{ij} \ + \\
+\sum_{r=1}^4 \beta_{4r} * I(Race.Ethnicity_{ij} = r) + \sum_{r=0}^4 \beta_{5r} * Age_{ij} * I(Race.Ethnicity_{ij} = r) \\
 \alpha_j \sim N(0,\tau^2)
 \end{aligned}
 $$
@@ -1020,7 +1020,7 @@ pool.list <- list(pool.age.college.race,
 
 Table 4 summarizes the different models I explored for the demographics-only model, their F1-scores, and false positive rates. All of these models were predisposed to committing a false positive, and our final demographics-only model performed best in terms of both metrics. 
 
-From the confusion matrix in Figure 7 in the Appendix, we see an example of this high false positive rate. However, the residual plot in Figure 8 in the Appendix shows a relatively consistent random scatter about the zero line with few low outliers. The limitations to this model's predictive performance are likely a consequence of the fact that the ability and/or decision to socially distance varies largely from person to person. 
+From the confusion matrix in Figure 10 in the Appendix, we see an example of this high false positive rate. However, the residual plot in Figure 11 in the Appendix shows a relatively consistent random scatter about the zero line with few low outliers. The limitations to this model's predictive performance are likely a consequence of the fact that the ability and/or decision to socially distance varies largely from person to person. 
 
 ```{r performance evaluation, warning=FALSE, cache=T}
 cv_plot <- function(with.obj, pool.obj, covid.data, create.cm.plot=FALSE, subtitle.cm=NA){
@@ -1097,7 +1097,7 @@ demographics.only.fit.results <- cv_plot(with.age.children.race.gender.college.h
                        pool.age.children.race.gender.college.house.intrxn.age.race,
                        covid.df.regression,
                        create.cm.plot=TRUE,
-                       subtitle.cm = "Figure 7: Demographics-Only Model on Imputation 1")
+                       subtitle.cm = "Figure 10: Demographics-Only Model on Imputation 1")
 ```
 
 
@@ -1201,7 +1201,7 @@ pres.trump.table$Variables <-c("Intercept",
 rownames(pres.trump.table) <- pres.trump.table$Variables
 ```
 
-From Table 7 in the Appendix, we will begin by interpreting the demographic main effects. Our model predicts that for every additional household member, we are 95% confident that the odds a participant is social distancing multiplies by a factor between `r round(exp(pres.trump.table["Household Size","Estimate"]- 1.96 * pres.trump.table["Household Size","Std.Error"]),3)` and `r round(exp(pres.trump.table["Household Size","Estimate"]+ 1.96 * pres.trump.table["Household Size","Std.Error"]),3)`, holding all else constant. It is important to note here that the logistical implications for what this variable means is highly variable from household to household. Holding all else constant, we are 95% confident that the odds a participant is socially distancing multiplies by a factor between `r round(exp(pres.trump.table["Children in Household","Estimate"]- 1.96 * pres.trump.table["Children in Household","Std.Error"]),3)` and `r round(exp(pres.trump.table["Children in Household","Estimate"]+ 1.96 * pres.trump.table["Children in Household","Std.Error"]),3)` for every additional child in their household. After accounting for all other co-variates, neither gender nor college degree status was significant.
+From Table 9 in the Appendix, we will begin by interpreting the demographic main effects. Our model predicts that for every additional household member, we are 95% confident that the odds a participant is social distancing multiplies by a factor between `r round(exp(pres.trump.table["Household Size","Estimate"]- 1.96 * pres.trump.table["Household Size","Std.Error"]),3)` and `r round(exp(pres.trump.table["Household Size","Estimate"]+ 1.96 * pres.trump.table["Household Size","Std.Error"]),3)`, holding all else constant. It is important to note here that the logistical implications for what this variable means is highly variable from household to household. Holding all else constant, we are 95% confident that the odds a participant is socially distancing multiplies by a factor between `r round(exp(pres.trump.table["Children in Household","Estimate"]- 1.96 * pres.trump.table["Children in Household","Std.Error"]),3)` and `r round(exp(pres.trump.table["Children in Household","Estimate"]+ 1.96 * pres.trump.table["Children in Household","Std.Error"]),3)` for every additional child in their household. After accounting for all other co-variates, neither gender nor college degree status was significant.
 
 Because of the interaction term between age and race/ethnic identity, it is slightly more complex to interpret these terms. We will accomplish this by considering NC residents of the same racial/ethnic identity. For our baseline race/ethnic identity, White, we are 95% confident that for every decade increase in age, the odds the elder White NC resident is social distancing is between `r round(exp(10*pres.trump.table["Age x Race/Ethnicity = White","Estimate"]- 10*1.96 * pres.trump.table["Age x Race/Ethnicity = White","Std.Error"]),3)` and `r round(exp(10*pres.trump.table["Age x Race/Ethnicity = White","Estimate"] + 10*1.96 * pres.trump.table["Age x Race/Ethnicity = White","Std.Error"]),3)` times that of a younger White NC resident, holding all else constant. We are 95% confident that for every decade increase in age, the odds an elder Asian NC resident is social distancing is between `r round(exp(10*pres.trump.table["Age x Race/Ethnicity = Asian","Estimate"]- 10*1.96 * pres.trump.table["Age x Race/Ethnicity = Asian","Std.Error"]),3)` and `r round(exp(10*pres.trump.table["Age x Race/Ethnicity = Asian","Estimate"] + 10*1.96 * pres.trump.table["Age x Race/Ethnicity = Asian","Std.Error"]),3)` times that of a younger Asian NC resident, holding all else constant. We estimate that for every decade increase in age, the odds an older Black NC resident is social distancing is between `r round(exp(10*pres.trump.table["Age x Race/Ethnicity = Black","Estimate"]- 10*1.96 * pres.trump.table["Age x Race/Ethnicity = Black","Std.Error"]),3)` and `r round(exp(10*pres.trump.table["Age x Race/Ethnicity = Black","Estimate"] + 10*1.96 * pres.trump.table["Age x Race/Ethnicity = Black","Std.Error"]),3)` times that of a younger Black NC resident, holding all else constant. We estimate that for every decade increase in age, the odds an older Hispanic/Latino NC resident is social distancing is between `r round(exp(10*pres.trump.table["Age x Race/Ethnicity = Hispanic/Latino","Estimate"]- 10*1.96 * pres.trump.table["Age x Race/Ethnicity = Hispanic/Latino","Std.Error"]),3)` and `r round(exp(10*pres.trump.table["Age x Race/Ethnicity = Hispanic/Latino","Estimate"] + 10*1.96 * pres.trump.table["Age x Race/Ethnicity = Hispanic/Latino","Std.Error"]),3)` times that of a younger Hispanic/Latino NC resident, holding all else constant. We estimate that for every decade increase in age, the odds an older NC resident who selected "Other" for their racial/ethnic identity is social distancing is between `r round(exp(10*pres.trump.table["Age x Race/Ethnicity = Other","Estimate"]- 10*1.96 * pres.trump.table["Age x Race/Ethnicity = Other","Std.Error"]),3)` and `r round(exp(10*pres.trump.table["Age x Race/Ethnicity = Other","Estimate"] + 10*1.96 * pres.trump.table["Age x Race/Ethnicity = Other","Std.Error"]),3)` times that of their younger counterpart. Note that for this last subgroup, this encompasses a highly diverse group of participants and is only represented by a small proportion of our dataset.
 
@@ -1322,7 +1322,7 @@ forestplot(rownames(pres.trump.forest.table),
                             xlab  = gpar(fontfamily = "serif")))
 ```
 
-In Figure 3, we can see that our final model and the sensitivity model largely agree with respect to covariate estimates. The most notable difference is that College Degree is significant in the sensitivity model, but the point estimates are nearly captured in each other's 95% confidence intervals. Because the estimates and certainty for most of the covariates are largely consistent between these two models, this suggests that the breakoff assumption did not largely alter our final model. Note that in this forest plot, along with Figures 5 and 10, the *Race/Ethnicity* effects and *Intercept* are scaled down by a factor of 10 for visual purposes.
+In Figure 3, we can see that our final model and the sensitivity model largely agree with respect to covariate estimates. The most notable difference is that College Degree is significant in the sensitivity model, but the point estimates are nearly captured in each other's 95% confidence intervals. Because the estimates and certainty for most of the covariates are largely consistent between these two models, this suggests that the breakoff assumption did not largely alter our final model. Note that in this forest plot, along with similar ones, the *Race/Ethnicity* effects and *Intercept* are scaled down by a factor of 10 for visual purposes.
 
 ### Complete Case Analysis
 
@@ -1384,7 +1384,7 @@ grid.arrange(arrangeGrob(complete.case.results,
 
 ```
 
-The confusion matrices in Figure 4 summarise the performance of our final model using a complete case approach. For both the set of complete surveys and the first imputation, this model almost fails to correctly classify any of the NC residents who weren't social distancing. This provides evidence that an MCAR (Missing Completely At Random) approach is insufficient for this dataset. A table summarising the model's coefficient estimates, along with a forest plot comparing them to our final model, are located in the Appendix (Table 9 and Figure 10).
+The confusion matrices in Figure 4 summarise the performance of our final model using a complete case approach. For both the set of complete surveys and the first imputation, this model almost fails to correctly classify any of the NC residents who weren't social distancing. This provides evidence that an MCAR (Missing Completely At Random) approach is insufficient for this dataset. A table summarising the model's coefficient estimates, along with a forest plot comparing them to our final model, are located in the Appendix (Table 11 and Figure 13).
 
 ### Non-Ignorable Data Selection Model
 
@@ -1500,14 +1500,14 @@ mnar.final.model.df[c(mu.params,
                row.names=F,
                col.names=c("$\\alpha$",
                            "$\\beta_1$",
-                           "$\\beta_21$",
-                           "$\\beta_22$",
-                           "$\\beta_23$",
-                           "$\\beta_24$",
-                           "$\\beta_30$",
-                           "$\\beta_31$",
-                           "$\\beta_32$",
-                           "$\\beta_33$",
+                           "$\\beta_{21}$",
+                           "$\\beta_{22}$",
+                           "$\\beta_{23}$",
+                           "$\\beta_{24}$",
+                           "$\\beta_{30}$",
+                           "$\\beta_{31}$",
+                           "$\\beta_{32}$",
+                           "$\\beta_{33}$",
                            "$\\beta_{34}$",
                            "a",
                            "b"),
@@ -1515,9 +1515,9 @@ mnar.final.model.df[c(mu.params,
   kableExtra::kable_styling(latex_options = c("hold_position"))
 ```
 
-Figure 5 displays traceplots for our final model's a and b parameter chains. The random scatter around the mean estimate, along with clear "mixing" between the different chains, indicate convergence for these parameters. Please reference Figure INSERT in the Appendix for the remaining traceplots for our final model. Similar plots were generated for other prior combinations that were examined to ensure convergence prior to comparison.
+Figure 5 displays traceplots for our final model's *a* and *b* parameter chains. The random scatter around the mean estimate, along with clear "mixing" between the different chains, indicate convergence for these parameters. Please reference Figure 14 in the Appendix for the remaining traceplots for our final model.
 
-Figures INSERT in the Appendix contain our auto-correlation plots, where each peak at the beginning and quickly drop close to 0 as the lag increases. This provides evidence that the iterations sufficiently expxlored the parameter space, as they were not strongly dependent upon one another.
+Figure 15 in the Appendix contains our auto-correlation plots for our *a* and *b* parameters, where we see a peak at the beginning that quickly drops close to 0 as the lag increases. This provides evidence that the iterations sufficiently explored the parameter space, as they were not strongly dependent upon one another.
 
 Table 5 summarizes our $\hat{R}$ and $n_{e\mathit{ff}}$ values across all of the parameters and covariates. An $\hat{R}$ value between 1 and 1.05 suggests convergence, which holds true for all of the table entries. Finally, the $n_{e\mathit{ff}}$ provides insight into whether our model has achieved stationarity, as it estimates the number of independent observations we obtained in our posterior draws. An arbitrary cutoff for acceptable $n_{e\mathit{ff}}$ values is between 150 and 200, which each of our parameters also satisfy.
 
@@ -1557,7 +1557,7 @@ priors <- list(list("beta_0_15-a_0_15-b_0_15/full-intrxn-no-health-beta_0_15-a_0
                     " ~ N(0,1/25); a,b ~ N(0,1/25)"))
 ```
 
-```{r a sensitivity, cache=F}
+```{r a sensitivity, cache=T}
 a_df <- lapply(priors, function(x) generate_density_df(x, "a")) %>% bind_rows(.)
 a_df <- rbind(a_df, generate_density_df("", 
                                       "a",
@@ -1581,7 +1581,7 @@ a_prior_plot <- a_df  %>%
   theme(legend.position="none")
 ```
 
-```{r b sensitivity, cache=F}
+```{r b sensitivity, cache=T}
 b_df <- lapply(priors, function(x) generate_density_df(x, "b")) %>% bind_rows(.)
 b_df <- rbind(b_df, generate_density_df("", 
                                       "b",
@@ -1608,7 +1608,7 @@ grid.arrange(arrangeGrob(a_prior_plot,
                          nrow=1))
 ```
 
-In Figure 6, we explore the posterior distributions of $a$, the $b$ across different priors on the demographic co-variates, along with $a$ and $b$ themselves. In both figures, the density plot with a dashed line is the posterior density plot of our final model. Given that our posterior estimate for both parameters roughly fall at the peaks for other priors as well, we have sufficient evidence that our parameters are insensitive to prior choice. Please refer to Figures INSERT for the remaining prior sensitivity plots on the demographic covariate terms, and note that each model had the same prior $N(0,1)$ prior on the intercept $\alpha$.
+In Figure 6, we explore the posterior distributions of $a$ and $b$ across different priors on the demographic co-variates, along with $a$ and $b$ themselves. The red line represents our final model's mean estimates of these parameters, and the density plots with a dashed line were derived from the chains of our final model. Given that our posterior means align well with the peaks for other priors, we have sufficient evidence that our parameters are not sensitive to prior choice. Note that each model had the same prior, $N(0,1)$, on the intercept term $\alpha$.
 
 ```{r, fig.align="center"}
 forestplot(rownames(mnar.final.model.forest.table), 
@@ -1633,11 +1633,11 @@ forestplot(rownames(mnar.final.model.forest.table),
                             xlab  = gpar(fontfamily = "serif")))
 ```
 
-Figure 7 summarizes a forestplot comparing the MNAR model's estimates to the one generated using the same covariates (age, gender, and race/ethnic identity) with the first modeling approach. This highlights key disagreements among all of the racial/ethnic estimates, except for those who identified as "Other". Specifically, the final model estimated that the combined effect of Age and being White was slightly positive, as was that of Age and being Black. In contrast, this model estiamtes these combined effects to be negative. Even more surprising, the MNAR model is more consistent with our exploratory data analysis (see Figure 1) than the *mice* model is. 
+Figure 7 summarizes a forestplot comparing the MNAR model's estimates to the one generated using the same covariates (age, gender, and race/ethnic identity) with the first modeling approach. This highlights key disagreements among all of the racial/ethnic estimates, except for those who identified as "Other". The strongest points of disagreements were the combined effect of Age and being White and that of Age and being Black.
 
 There are multiple reasons for this discrepancy. Firstly, in parameterizing the second level of MNAR model, it isn't suprising that our demographic covariates would converge to slightly different values. Further, the poor representation among Asian, Hispanic/Latino, and those who identified as "Other" compounded instability in both modeling approaches. Another insight this discrepancy offers is that the effects of race/ethnicity on social distancing adherence are quite complex and require information from other available covariates to better understand the response.
 
-For example, as we can see in Table 6 below, the distribution of President Trump Approval Score, for those participants with an available value, is highly dependent on the race/ethnicity identity of the North Carolinian resident. Given the limitation that our MNAR approach only handled fully populated covariates, we can not draw any specific conclusions from the variable estimates relative to our final model.
+For example, as we can see in Table 6 below, the distribution of President Trump Approval Score, for those participants with an available value, is highly dependent on the race/ethnic identity of the North Carolinian resident. Given the limitation that our MNAR approach only handled fully populated covariates, we can not draw any specific conclusions from the variable estimates relative to our final model.
 
 ```{r, fig.align="center"}
 covid.df %>%
@@ -1646,7 +1646,7 @@ covid.df %>%
   dplyr::summarize(`Mean Score` = round(mean(trump_approve_score, 
                                                 na.rm=T),2),
                    .groups="drop") %>%
-  pander(., "President Trump Approval Score Summmary Across Racial/Ethnicity Groups")
+  pander(., "President Trump Approval Score Summmary Across Racial/Ethnic Identities")
 ```
 
 ```{r, eval=F}
@@ -1658,6 +1658,8 @@ covid.df %>%
                    .groups="drop") %>%
   pander(., "President Trump Approval Score Summmary Across Number of Children in Household")
 ```
+
+**DISCUSSION OF a AND b - Discuss tomorrow**
 
 ### Random County Intercept Model
 
@@ -1703,7 +1705,7 @@ colnames(county.cm.tibble) <- c("Target", "Prediction", "N")
 county.cm <- plot_confusion_matrix(county.cm.tibble, 
                               add_row_percentages = FALSE,
                               add_col_percentages = FALSE) + 
-  ggplot2::labs(subtitle = "Figure 12: Random County Intercept Model") + 
+  ggplot2::labs(subtitle = "Figure 17: Random County Intercept Model") + 
   ggplot2::theme(plot.subtitle = element_text(hjust = 0.5, size = 10))
 
 county.f1.score <- (caret::confusionMatrix(covid.df.county$predictions,
@@ -1751,7 +1753,7 @@ forestplot(rownames(pres.trump.forest.table[county.row, ]),
            col = fpColors(box = c("blue", "darkred"),
                           line = c("blue", "darkred")),
            legend = c("Final", "Random County Intercept"),
-           title="Figure 5: Final Model vs County Intercept Model",
+           title="Figure 8: Final Model vs County Intercept Model",
            txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain",fontsize=10),
                             label = gpar(fontfamily = "serif", fontface="plain",fontsize=10),
                             ticks = gpar(fontfamily = "serif",fontsize=12),
@@ -1769,13 +1771,13 @@ county.random.effects %>% knitr::kable(., format="latex",
   kableExtra::kable_styling(latex_options = c("hold_position"))
 ```
 
-The coefficient estimates and confusion matrix associated with this model are located in Table 10 and Figure 12 in the Appendix. As discussed in the methodology section, there are significant limitations to this model. Missing imputation was infeasible for this model, which limited the number of surveys and covariates. 
+The coefficient estimates and confusion matrix associated with this model are located in Table 12 and Figure 17 in the Appendix. As discussed in the methodology section, there are significant limitations to this model. Missing imputation was infeasible for this model, which limited the number of surveys and covariates. 
 
-For those variables that are present in this model, the forest plot in Figure 5 compares the estimates and their precision to those of the final model. There appears to be generally wider confidence intervals for the random county intercept approach, which is unsurprising given the amount of surveys dropped in order to generate this model. In particular, there was little certainty surrounding most of the *Race/Ethnicity* groups.
+For those variables that are present in this model, the forest plot in Figure 8 compares the estimates and their precision to those of the final model. There appears to be generally wider confidence intervals for the random county intercept approach, which is unsurprising given the amount of surveys dropped in order to generate this model. In particular, there was little certainty surrounding most of the *Race/Ethnicity* groups.
 
-Table 5 summarizes our estimate of $\tau^2$, which is the estimated variance of our random county intercepts, while Figure 13 in the Appendix displays a forest plot of the county intercepts. The F1-score of this model is approximately `r round(county.f1.score,3)`, and the false positive rate is `r round(county.false.positive,3)`. It is important to keep in mind that this slightly improved performance is incomprable to our final model, as it uses a completely different range of data. However, this model does present key insights into the abilities of politically and demographically contrasting counties to encourage social distancing.
+Table 7 summarizes our estimate of $\tau^2$, which is the estimated variance of our random county intercepts, while Figure 19 in the Appendix displays a forest plot of the county intercepts. The F1-score of this model is approximately `r round(county.f1.score,3)`, and the false positive rate is `r round(county.false.positive,3)`. It is important to keep in mind that this slightly improved performance is incomprable to our final model, as it uses a completely different range of data. However, this model does present key insights into the abilities of politically and demographically contrasting counties to encourage social distancing.
 
-Below are two heatmaps that depict estimated county intercepts (Figure 6a) and the 2020 President Trump vote share percentage (Figure 6b). In Figure 6a, a darker county corresponds to a higher intercept, and therefore a higher likelihood to socially distance. In Figure 6b, a darker county corresponds to a higher President Trump vote share percentage [[19]][Bibliography]. This data was sourced from politico.com and is listed in the Supplementary Links section. The indices on the figures reference specific counties we discuss in this section: Orange County (1), Durham County (2), Stokes County (3), and Davidson County (4). 
+Below are two heatmaps that depict estimated county intercepts (Figure 9a) and the 2020 President Trump vote share percentage (Figure 9b). In Figure 9a, a darker county corresponds to a higher intercept, and therefore a higher likelihood to socially distance. In Figure 9b, a darker county corresponds to a higher President Trump vote share percentage [[19]][Bibliography]. This data was sourced from politico.com and is listed in the Supplementary Links section. The indices on the figures reference specific counties we discuss in this section: Orange County (1), Durham County (2), Stokes County (3), and Davidson County (4). 
 
 ```{r north carolina heatmap, fig.width=5, fig.height=2.5, fig.align="center", warning=F,message=F,echo=FALSE,results='hide',fig.keep='all'}
 map <- map_data("county")
@@ -1793,7 +1795,7 @@ nc_votes$trump.pct <- as.numeric(str_sub(nc_votes$trump.pct, end=-2))/100
 mapdata <- merge(mapdata, nc_votes, by="county_name")
 
 ggplot(data=mapdata) + 
-  labs(caption="Figure 6a") +
+  labs(caption="Figure 9a") +
   geom_polygon(aes(x=long, y=lat, group = group, fill = 2*county_name..Intercept.-1),
                colour = "#202020", size=.8) +
   scale_fill_gradient2(high="#454545", mid = "#dfdfdf" , "Intercepts") +
@@ -1813,7 +1815,7 @@ ggplot(data=mapdata) +
 
 ```{r north carolina votes heatmap, fig.width=5, fig.height=2.5, fig.align="center"}
 ggplot(data=mapdata) + 
-  labs(caption="Figure 6b") +
+  labs(caption="Figure 9b") +
   geom_polygon(aes(x=long, y=lat, group = group, fill = trump.pct),colour = "#202020", size=.8) +
   scale_fill_gradient2(high="#353535", mid = "#ffffff" , "2020 President Trump Vote %") +
   theme(legend.title = element_text(size = 10), axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank(),
@@ -1842,7 +1844,7 @@ We saw consistent issues across the many models we explored with a high false-po
 
 For our sensitivity analysis, we developed a classical missing-at-random model by populating the response using the mice package and examining the results of a complete case analysis. In general, our coefficients for the MAR model largely agreed with our final model. The complete case model offered strong evidence that a missing-completely-at-random approach is insufficient in the context of this dataset.
 
-Next, we attempted a missing-not-at-random model by relating the missingness of *ESDA* to the value itself. (Once results are finalized, a summary will be here!).
+Next, we attempted a missing-not-at-random model by relating the missingness of *ESDA* to the value itself. The interpretations that resulted from this model were difficult to nail down conclusively, given its discrepancies with our other model estimates. However, the estimated value of the coefficient *b* that related missingness to *ESDA* suggests that a survey break-off provides strong evidence that the participant is not social distancing. Thus, this offers evidence that our break-off assumption for our final model has some merit.
 
 Finally, while the county-intercept model suffered a significant limitation of only utilizing a fraction of the dataset, it provided insight into how social distancing adherence varies among counties. Another interesting perspective on this data would be to examine how social distancing adherence varies across congressional districts, as they are highly partisan in North Carolina.
  
@@ -1883,7 +1885,7 @@ covid.df.demographic.preds <- predict(pooled.predict.demographic.obj, newdata = 
 arm::binnedplot(x=covid.df.demographic.preds,y=residuals(pooled.predict.demographic.obj, "pearson", scaled = TRUE),
                 xlab="Predicted Probabilities", 
                 ylab="Binned Residuals",
-                main = "Figure 8: Demographics-Only Binned Residuals",
+                main = "Figure 11: Demographics Binned Residuals",
                 cex.main=0.9, cex.lab=0.8)
 ```
 
@@ -1905,7 +1907,7 @@ covid.df.trump.preds <- predict(pooled.predict.trump.obj, newdata = covid.df.reg
 arm::binnedplot(x=covid.df.trump.preds,y=residuals(pooled.predict.trump.obj, "pearson", scaled = TRUE),
                 xlab="Predicted Probabilities", 
                 ylab="Binned Residuals",
-                main = "Figure 9: Trump Approval Score Binned Residuals",
+                main = "Figure 12: President Trump Binned Residuals",
                 cex.main=0.9, cex.lab=0.8)
 ```
 
@@ -1941,7 +1943,7 @@ forestplot(rownames(pres.trump.forest.table),
            col = fpColors(box = c("blue", "darkred"),
                           line = c("blue", "darkred")),
            legend = c("Final", "Complete Case"),
-           title="Figure 10: Final Model vs Complete Case Model",
+           title="Figure 13: Final Model vs Complete Case Model",
            txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain", fontsize=10),
                             label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
                             ticks = gpar(fontfamily = "serif"),
@@ -1961,36 +1963,39 @@ tidybayes::gather_draws(mnar.final.model %>% as.mcmc(.),
                         beta8,
                         beta9,
                         beta10) %>% 
-  ungroup() %>% 
+  ungroup() %>%
+  mutate(variable= case_when(
+    `.variable` == "alpha" ~ "alpha",
+    `.variable` == "beta1" ~ "beta[1]",
+    `.variable` == "beta2" ~ "beta[21]",
+    `.variable` == "beta3" ~ "beta[22]",
+    `.variable` == "beta4" ~ "beta[23]",
+    `.variable` == "beta5" ~ "beta[24]",
+    `.variable` == "beta6" ~ "beta[30]",
+    `.variable` == "beta7" ~ "beta[31]",
+    `.variable` == "beta8" ~ "beta[32]",
+    `.variable` == "beta9" ~ "beta[33]",
+    `.variable` == "beta10" ~ "beta[34]"
+  )) %>%
   ggplot() + 
   geom_line(aes(x = .iteration, y = .value, color = as.factor(.chain)), alpha = 0.7) + 
-  facet_grid(.variable~., scales = "free_y") + 
-  labs(title = bquote(atop(paste("Traceplots of ",
-                                alpha, ", ", 
-                                beta[1], ": Gender=Male, ", 
-                                beta[2], ": R/E=Asian, ",
-                                beta[3], ": R/E=Black, ",
-                                beta[4], ": R/E=Hispanic/Latino, ",
-                                beta[5], ": R/E=Other, "),
-                           paste(
-                                beta[6], ": Age x R/E=Asian, ",
-                                beta[7], ": Age x R/E=Black, ",
-                                beta[8], ": Age x R/E=Hispanic/Latino, ",
-                                beta[9], ": Age x R/E=Other, ",
-                                beta[10], ": Age x R/E=White"))), 
-       x = "Iteration", y = "Value", color = "Chain") +
-  theme(plot.title = element_text(size=8))
+  facet_grid(variable~., scales = "free_y", labeller = label_parsed) + 
+  labs(title ="Figures 14 and 15: Traceplots and ACF Plots", 
+       x = "Iteration", 
+       y = "Value", 
+       color = "Chain") +
+  theme(legend.position="none")
 ```
 
-```{r remaining acf plots, message=F, warning=F, fig.height=5, fig.align="center"}
+```{r remaining acf plots, message=F, warning=F, fig.height=4, fig.width=7, fig.align="center"}
 plot_acf <- function(parameter, mod, show.y=FALSE) {
   acf.p <- mod$BUGSoutput$sims.matrix %>% 
     as_tibble() %>% 
     pull(parameter)
   acf(acf.p, main=parameter, xlab="", ylab="") 
 }
-par(mfrow = c(3, 4),oma=c(0,0,0,0))
-invisible(sapply(mu.params, 
+par(mfrow = c(1, 2),oma=c(0,0,1,0))
+invisible(sapply(c("a", "b"), 
                  function(x) plot_acf(x, mnar.final.model)))
 ```
 
@@ -2012,7 +2017,6 @@ county.results.table.appendix$Variables <- c("Intercept",
                                              "Age x Race/Ethnicity = White")
 rownames(county.results.table.appendix) <- NULL
 county.results.table.appendix <- county.results.table.appendix[, c("Variables","Estimate", "Std.Error", "P-Value")]
-pander(county.results.table.appendix,caption="Random County Intercept Model")
 ```
 
 ```{r Residuals county model, fig.height=2.5, fig.width=4,fig.align="center",warning=F,message=F,echo=FALSE,results='hide',fig.keep='all'}
@@ -2020,16 +2024,21 @@ pander(county.results.table.appendix,caption="Random County Intercept Model")
 arm::binnedplot(x=rand.county.predictions,y=residuals(covid.df.county.mod, "pearson", scaled = TRUE),
                 xlab="Predicted Probabilities", 
                 ylab="Binned Residuals",
-                main = "Figure 11: Random County Intercept Binned Residuals",
+                main = "Figure 16: Random County Binned Residuals",
                 cex.main=0.9, cex.lab=0.8)
 ```
+
+```{r}
+pander(county.results.table.appendix,caption="Random County Intercept Model")
+```
+
 
 ```{r county cm, fig.height=2.5, fig.align="center",warning=F,message=F,echo=FALSE,results='hide',fig.keep='all'}
 county.cm
 ```
 
 ```{r random effects plot for counties, fig.height=4, fig.align="center", warning=F, message=F}
-random.effects.plot <- plot_model(covid.df.county.mod, type = "re", facet.grid=FALSE, title="Figure 13: Random Effects over Counties") 
+random.effects.plot <- plot_model(covid.df.county.mod, type = "re", facet.grid=FALSE, title="Figure 18: Random Effects over Counties") 
 random.effects.plot + scale_x_discrete(breaks=c(), labels=c())
 ```
 
@@ -2211,7 +2220,7 @@ grid.arrange(arrangeGrob(p3 + theme(legend.position="none"),
                          p8,
                          p5,
                          p6,
-                         nrow=2, top = "Figure 14"),
+                         nrow=2, top = "Figure 19"),
              eda.legend, nrow=2,heights=c(10, 1))
 ```
 
