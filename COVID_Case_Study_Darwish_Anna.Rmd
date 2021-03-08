@@ -816,7 +816,7 @@ log(\frac{M_{i}}{1-M_{i}}) = \alpha + \beta_1 * I(Sex_i = Male) +\sum_{r=1}^4 \b
  \\
  log(\frac{P_{i}}{1-P_{i}}) = a + b * y_i
  \\
- y_i \sim Bern(M_i), \ \ \alpha \sim N(0, 1), \ \ \beta_i \sim N(0,0.1), \ \ a \sim N(0,0.05) , \ \ b \sim N(0,0.05)
+ y_i \sim Bern(M_i), \ \ \alpha \sim N(0, 1), \ \ \beta_i \sim N(0,1/5), \ \ a \sim N(0,1/15) , \ \ b \sim N(0,1/15)
 \end{aligned}
 $$
 In this case $M_i$ represents the probability individual $i$'s *ESDA* is missing, and $P_i$ retains its meaning from previous models. Similar to before, the *Race/Ethnicity* covariate has a coefficient for those identifying as Asian, Black, Hispanic/Latino, and Other, while the combined effect of *Age* and *Race/Ethnicity* includes a covariate for White residents. 
@@ -1554,9 +1554,7 @@ priors <- list(list("beta_0_10-a_0_20-b_0_20/full-intrxn-no-health-alpha_0_1-bet
                list("beta_0_15-a_0_15-b_0_15/full-intrxn-no-health-beta_0_15-a_0_15-b_0_15.Rdata",
                     " ~ N(0,1/15); a,b ~ N(0,1/15)"),
                list("beta_0_20-a_0_20-b_0_20/full-intrxn-no-health-alpha_0_1-beta_0_20-a_0_20-b_0_20.Rdata",
-                    " ~ N(0,1/20); a,b ~ N(0,1/20)"),
-               list("beta_0_25-a_0_25-b_0_25/full-intrxn-no-health-beta_0_25-a_0_25-b_0_25.Rdata",
-                    " ~ N(0,1/25); a,b ~ N(0,1/25)"))
+                    " ~ N(0,1/20); a,b ~ N(0,1/20)"))
 ```
 
 ```{r a sensitivity, cache=T}
@@ -1590,7 +1588,7 @@ b_df <- rbind(b_df, generate_density_df("",
                                       final_model = T))
 ```
 
-```{r b sensitivity plots display, fig.align="center", fig.width=9, fig.height=3.5}
+```{r b sensitivity plots display, fig.align="center", fig.width=10, fig.height=3.5}
 b_prior_plot <- b_df  %>% 
   ggplot() + 
   geom_density(aes(x = b)) + 
