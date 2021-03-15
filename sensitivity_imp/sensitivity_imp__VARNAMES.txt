@@ -13,4 +13,5 @@ age_race_ethnicity_black
 age_race_ethnicity_hispanic
 age_race_ethnicity_other
 age_race_ethnicity_white
+Survey.Mode
 Social.Distancing.Adherence

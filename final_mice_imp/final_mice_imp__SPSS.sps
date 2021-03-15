@@ -5,7 +5,8 @@ DATA LIST FILE= "/Users/annadarwish/Desktop/senior/thesis/covid/final_mice_imp/f
   Q19.20..Race...Ethnicity week trump_approve_score 
   Social.Distancing.Adherence age_race_ethnicity_asian 
   age_race_ethnicity_black age_race_ethnicity_hispanic 
-  age_race_ethnicity_other age_race_ethnicity_white .
+  age_race_ethnicity_other age_race_ethnicity_white 
+    Survey.Mode (A4) .
 
 
 VARIABLE LABELS
@@ -25,6 +26,7 @@ VARIABLE LABELS
  age_race_ethnicity_hispanic "age_race_ethnicity_hispanic" 
  age_race_ethnicity_other "age_race_ethnicity_other" 
  age_race_ethnicity_white "age_race_ethnicity_white" 
+ Survey.Mode "Survey.Mode" 
  .
 
 VALUE LABELS
