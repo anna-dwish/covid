@@ -731,7 +731,7 @@ Firstly, from the top left plot, there does not appear to be significant differe
 
 ## Missing Data
 
-To ensure independence among observations, I took the most recent survey submission for each unique participant in this dataset. Given that it took time for many people to understand the gravity of COVID-19, along with the spread of information on best practices, this decision relies on the assumption that later surveys are more representative of residents' current behaviors. Additionally, every model, except the MNAR model, accounts for the sampling weight associated with each participant as inversely proportional to the dispersons.
+To ensure independence among observations, I took the most recent survey submission for each unique participant in this dataset. Given that it took time for many people to understand the gravity of COVID-19, along with the spread of information on best practices, this decision relies on the assumption that later surveys are more representative of residents' current behaviors. Additionally, every model, except the MNAR model, accounts for the sampling weight associated with each participant as inversely proportional to the dispersions.
 
 The first step in our methodology will be addressing the missing data. In order to fill in the missing predictor variables, I used a multiple imputation approach on the available demographic data with the *mice* package. This uses multiple linear and logistic regression to populate variables with missing data. An unfortunate limitation with this approach is that it makes the assumption that the data is missing at random, conditional on other measured data. This could be a stretch as it appears to be missing not at random, which was discussed in the *Missing Data Overview & Handling* section. However, we can examine the reliability of these estimates with sensitivity analysis [[16]][Bibliography]. By conducting multiple iterations of imputation, it is possible to understand the uncertainty with regards to our imputation method. Per the standard rule of using the percentage of missing data as the number of iterations as percentage of missing data, I conducted 25 iterations of missing data imputation. Note that all aforementioned exploratory analysis plots (Figures 2 and 23) stem from the first imputation.
 
@@ -845,7 +845,7 @@ log(\frac{P_{i}}{1-P_{i}}) = \beta_0 + \beta_1 * I(Sex_i = Male) + \beta_2 * I(C
 \end{aligned}
 $$
 
-In the model above, $P_i$ represents the probability individual $i$ is social distancing. For the $\beta_{5r}$ terms, $\beta_{51}, \beta_{52},\beta_{53},$ and $\beta_{54}$ equate to Asian, Black, Hispanic/Latino, and Other, respectively. The baseline is White. Given the limitation that *mice* does not yield a covariance matrix for these estimates when pooling the models, the interaction effect between *Age* and *Race/Ethnicitiy* was parameterized in a manner that would yield confidence intervals when comparing two members of the same racial/ethnic identity.  For this reason, the $\beta_{6r}$ terms include a covariate for White residents, and there is no explicit main effect for *Age*.
+In the model above, $P_i$ represents the probability individual $i$ is social distancing. For the $\beta_{5r}$ terms, $\beta_{51}, \beta_{52},\beta_{53},$ and $\beta_{54}$ equate to Asian, Black, Hispanic/Latino, and Other, respectively. The baseline is White. Given the limitation that *mice* does not yield a covariance matrix for these estimates when pooling the models, the interaction effect between *Age* and *Race/Ethnicity* was parameterized in a manner that would yield confidence intervals when comparing two members of the same racial/ethnic identity.  For this reason, the $\beta_{6r}$ terms include a covariate for White residents, and there is no explicit main effect for *Age*.
 
 To address the second goal of this case study, I added *President Trump Approval Score* as a predictor to the demographics model above. Additionally, I examined possible interaction effects between *President Trump Approval Score* and any significant demographic predictors from the previous model. This yielded our final model:
 
@@ -860,7 +860,7 @@ In addition to the sensitivity analysis involved in creating models across 25 di
 
 While the final model incorporates missingness information directly into the response, it relies on a strong assumption with respect to the nature of the missingness. For this reason, I also created a non-ignorable missing data selection model, where I first use the complete demographic covariates (age, race/ethnicity, and gender) to predict the likelihood that the *ESDA* of the surveyee is missing. The next level then relates that likelihood to the likelihood that the surveyee is social distancing. 
 
-While prior selection built on previous literature is often a key component of Bayesian modeling, the novelty of pandemic behaviors did not sufficiently align with existing literature on other official health recommendations, such as wearing a seatbelt or getting the flu vaccine. For this reason, our final model's prior, along with those used for prior sensitivity analysis, are relatively non-informative. Note that the variance of the priors are relatively low due to the scale of the response. The *Results* section contains a more thorough anaysis of the other priors.
+While prior selection built on previous literature is often a key component of Bayesian modeling, the novelty of pandemic behaviors did not sufficiently align with existing literature on other official health recommendations, such as wearing a seatbelt or getting the flu vaccine. For this reason, our final model's prior, along with those used for prior sensitivity analysis, are relatively non-informative. Note that the variance of the priors are relatively low due to the scale of the response. The *Results* section contains a more thorough analysis of the other priors.
 
 The parameterization of this model is:
 
@@ -1323,7 +1323,7 @@ Prior to the sensitivity analysis section, note that Figure 15 in the Appendix d
 
 ### Breakoff Assumption
 
-As discussed in the *Response Variable* section, *ESDA* was generated from a combination of answers pertinent to social distancing and the breakoff point of the survey if that information was unavailable. To conduct sensitivity analysis to this decision, the following model was generated by using the *mice* package to impute *ESDA*. In this manner, no assumptions were made regarding the breakoff point.
+As discussed in the *Response Variable* section, *ESDA* was generated from a combination of answers pertinent to social distancing and the breakoff point of the survey if that information was unavailable. To conduct sensitivity analysis to this decision, the following model was generated by using the *mice* package to impute *ESDA*. In this manner, no assumptions were made regarding the breakoff point, and this approach reflects a classic MAR framework.
 
 ```{r Sensitivity analysis, include=F,message=F, warning=F}
 covid.df.sensitivity$Social.Distancing.Adherence <- rep(TRUE,nrow(covid.df.sensitivity))
@@ -1452,7 +1452,7 @@ grid.arrange(arrangeGrob(complete.case.results,
 
 ```
 
-The confusion matrices in Figure 6 summarise the performance of our final model using a complete case approach. For both the set of complete surveys and the first imputation, this model almost fails to correctly classify any of the NC residents who weren't social distancing. This provides evidence that an MCAR (Missing Completely At Random) approach is insufficient for this dataset. A table summarising the model's coefficient estimates, along with a forest plot comparing them to our final model, are located in the Appendix (Table 12 and Figure 17).
+The confusion matrices in Figure 6 summarize the performance of our final model using a complete case approach. For both the set of complete surveys and the first imputation, this model almost fails to correctly classify any of the NC residents who weren't social distancing. This provides evidence that an MCAR (Missing Completely At Random) approach is insufficient for this dataset. A table summarizing the model's coefficient estimates, along with a forest plot comparing them to our final model, are located in the Appendix (Table 12 and Figure 17).
 
 ### Non-Ignorable Data Selection Model
 
@@ -1728,7 +1728,7 @@ forestplot(rownames(mnar.final.model.forest.table),
            line.margin = .2,
            col = fpColors(box = c("blue", "darkred"),
                           line = c("blue", "darkred")),
-           legend = c("Final", "MNAR"),
+           legend = c("Mice", "MNAR"),
            title="Figure 9: Unweighted Mice Model vs MNAR Model",
            txt_gp = fpTxtGp(title= gpar(fontfamily = "serif", fontface="plain", fontsize=10),
                             label = gpar(fontfamily = "serif", fontface="plain", fontsize=10),
