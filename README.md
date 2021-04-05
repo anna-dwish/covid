@@ -1,2 +1,9 @@
-# covid
-This study explores the likelihood of social distancing adherence across demographic and political traits in North Carolina.
+# Undergraduate Thesis in Statistical Science: COVID-19 Social Distancing Adherence in North Carolina
+
+## Abstract
+
+This thesis explores the relationship between social distancing adherence and political leanings/demographic characteristics of North Carolinian (NC) residents throughout the beginning of the COVID-19 pandemic in 2020. Using data sourced from Duke Forge/SSRI’s COVID-19 Digital Lab’s Social Distancing Survey, we explored this relationship with conventional linear models, hierarchical models, and random effect models to quantify this relationship. Due to limitations of survey breakoff, a large part of our methodology focuses on leveraging a variety of MCAR, MAR, and MNAR approaches such that we were able to evaluate our uncertainty in covariate estimates and conclusions. Ultimately, our models provided substantial evidence that age, household composition, race/ethnic identity, location, and perceptions of President Trump’s COVID-19 policies are significant in evaluating the likelihood that a given NC resident will socially distance.
+
+## Non-Ignorable File Generation
+
+Due to the computational complexity of producing the results of the non-ignorable data selection model, it is recommended that these files be generated using the Duke Computing Cluster (DCC) or they can be accessed directly on Box here: . This can be accomplished with the *mnar_models.R* script and the *submit_mnar_model.sh* SLURM script, which requires a group account name and Duke email. The input parameters, in order, are the prior on the mean and precision of the $\beta$ coefficients, the prior on the mean and precision of the missingness intercept *a*, and the prior on the mean and precision of the missingness coefficient *b* (see paper for more details on their exact meanings in the context of the model.) By default, the final models' values are present in the SLURM script.

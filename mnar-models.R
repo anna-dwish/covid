@@ -2,6 +2,17 @@ library(tidyverse)
 library(R2jags)
 library(dplyr)
 
+args = (commandArgs(TRUE))
+
+beta_mean = args[1]
+beta_precision = args[2]
+
+a_mean = args[3]
+a_precision = args[4]
+
+b_mean = args[5]
+b_precision = args[6]
+
 `wtd.mean` <- function (x, weights = NULL, normwt = "ignored", na.rm = TRUE) 
 {
   if (!length(weights)) 
@@ -58,6 +69,7 @@ covid.df <- covid.df %>%  mutate(
     Q1..Health.Quality == "Very Good" ~ 3
   ))
 
+
 ## Weighted Mean Center Age
 covid.df$age <- (covid.df$age - wtd.mean(covid.df$age, covid.df$weight))/sqrt(wtd.var(covid.df$age, covid.df$weight))
 
@@ -74,16 +86,6 @@ covid.df <- covid.df %>%  mutate(
 covid.df$Q19.20..Race...Ethnicity <- as.factor(covid.df$Q19.20..Race...Ethnicity)
 covid.df$Q19.20..Race...Ethnicity <- relevel(covid.df$Q19.20..Race...Ethnicity, ref="White")
 
-## Make ssda a logical vector
-covid.df<- covid.df %>% mutate(
-  ssda = case_when(
-    is.na(Q13..Currently.Practicing.Social.Distancing.) ~ NA,
-    Q13..Currently.Practicing.Social.Distancing. == "Yes" ~ TRUE,
-    Q13..Currently.Practicing.Social.Distancing. == "No" ~ FALSE,
-    TRUE ~ NA
-  ))
-
-
 ## Generate esda
 covid.df <- covid.df %>% dplyr::mutate(esda = case_when(
   !is.na(Q6..Non.HH.Face.to.Face.Count) &  Q6..Non.HH.Face.to.Face.Count == 0 ~ TRUE,
@@ -98,10 +100,6 @@ covid.df <- covid.df %>% dplyr::mutate(esda = case_when(
 
 
 covid.df<- covid.df %>% mutate(
-  miss.ssda = case_when(
-    is.na(Q13..Currently.Practicing.Social.Distancing.) ~ 1,
-    TRUE ~ 0
-  ),
   miss.esda = case_when(
     is.na(esda) ~ 1,
     TRUE ~ 0
@@ -109,94 +107,77 @@ covid.df<- covid.df %>% mutate(
 )
 
 ## Select Relevant Variables and rename columns
-covid.df.demographic <- covid.df %>% dplyr::select("age", 
-                                                   "DEMOGRAPHICS...GENDER", 
-                                                   "health", 
+covid.df.demographic <- covid.df %>% dplyr::select("age",
+                                                   "DEMOGRAPHICS...GENDER",
+                                                   "health",
                                                    "Q19.20..Race...Ethnicity",
-                                                   "ssda", 
                                                    "esda",
-                                                   "miss.ssda",
                                                    "miss.esda")
-colnames(covid.df.demographic) <- c("age.centered", 
-                                    "gender", 
-                                    "health",  
-                                    "race.ethnicity", 
-                                    "ssda", 
+colnames(covid.df.demographic) <- c("age",
+                                    "gender",
+                                    "health",
+                                    "race.ethnicity",
                                     "esda",
-                                    "miss.ssda",
                                     "miss.esda")
 
-covid.df.president.trump <- covid.df %>% filter(!is.na(trump_approve_score))
-covid.df.president.trump <- covid.df.president.trump %>% dplyr::select("age",
-                                                                       "DEMOGRAPHICS...GENDER",
-                                                                       "health",
-                                                                       "Q19.20..Race...Ethnicity",
-                                                                       "trump_approve_score",
-                                                                       "ssda",
-                                                                       "esda",
-                                                                       "miss.ssda",
-                                                                       "miss.esda")
-colnames(covid.df.president.trump) <- c("age.centered", 
-                                        "gender", 
-                                        "health",  
-                                        "race.ethnicity",
-                                        "trump",
-                                        "ssda", 
-                                        "esda",
-                                        "miss.ssda",
-                                        "miss.esda")
-
 create_model_text_file <- function(file_name, mu_params){
-  
+
   ## GENERATE MU EQUATION FROM PARAMS
   params_indexed <- paste0(mu_params, "[i]")
-  
-  betas <- paste0(rep("beta",length(mu_params)), 
+
+  betas <- paste0(rep("beta",length(mu_params)),
                   as.character(1:length(mu_params)))
-  
+
   betas_params <- paste0(paste0(betas,
-                                rep("*",length(mu_params))), 
+                                rep("*",length(mu_params))),
                          params_indexed)
-  
+
   mu_eqn <- paste0(c("alpha", betas_params), collapse=" + ")
-  
+
   ## GENERATE BETA PRIORS
-  betas_priors <- paste0(paste0(betas, " ~ dnorm(0,50)"), collapse="\n")
+  beta_prior_input <- paste0(" ~ dnorm(", beta_mean, ",", beta_precision, ")")
+  betas_priors <- paste0(paste0(betas, beta_prior_input), collapse="\n")
   
-  cat("model{ 
+  ## GENERATE A AND B PRIORS
+  a_prior <- paste0("a ~ dnorm(", a_mean, ",", a_precision, ")")
+  b_prior <- paste0("b ~ dnorm(", b_mean, ",", b_precision, ")")
+
+  cat("model{
     for (i in 1:N) {
     mu[i] <- ",
       mu_eqn,
       "
     y[i] ~ dbern(mu[i])
-    
+
     miss[i] ~ dbern(p[i])
     logit(p[i]) <- a + b*(y[i])
-    
-    }
-    a ~ dnorm(0.5,50)
-    b ~ dnorm(-0.5,50)
-    
-    alpha ~ dnorm(0, 10)\n",
+
+    }\n",
+    a_prior,
+    "\n",
+    b_prior,
+    "\n",
+    "alpha ~ dnorm(0, 1)",
+    "\n",
       betas_priors,
-      "\n}", 
+      "\n}",
       file=file_name)
 }
 
-get_model <- function(dat, 
-                      params_to_save, 
-                      model_text_file, 
-                      model_name, 
-                      n_iter=200000, 
+get_model <- function(dat,
+                      params_to_save,
+                      model_text_file,
+                      model_name,
+                      n_iter=300000,
                       n_chains=3,
-                      n_burn_in=5000)
+                      n_burn_in=8000)
 {
   if (file.exists(model_name)) {
     load(file=model_name)
-  } 
+  }
   else {
-    rjags_model <- jags(data=dat,  
-                        parameters.to.save=params_to_save, 
+    rjags_model <- jags(data=dat,
+                        parameters.to.save=params_to_save,
                         n.iter=n_iter,
                         n.chains=n_chains,
                         n.burnin=n_burn_in,
@@ -206,27 +187,42 @@ get_model <- function(dat,
   return(rjags_model)
 }
 
-esda_dat <- list(age = covid.df.demographic$age.centered,
-                 gender = covid.df.demographic$gender,
-                 health = covid.df.demographic$health,
+esda_dat <- list(gender = covid.df.demographic$gender,
                  race_ethnicity_asian=as.factor(as.numeric(covid.df.demographic$race.ethnicity == "Asian")),
                  race_ethnicity_black=as.factor(as.numeric(covid.df.demographic$race.ethnicity == "Black")),
                  race_ethnicity_hispanic=as.factor(as.numeric(covid.df.demographic$race.ethnicity == "Hispanic/Latino")),
                  race_ethnicity_other=as.factor(as.numeric(covid.df.demographic$race.ethnicity == "Other")),
+                 age_race_ethnicity_asian=covid.df.demographic$age*as.numeric(covid.df.demographic$race.ethnicity == "Asian"),
+                 age_race_ethnicity_black=covid.df.demographic$age*as.numeric(covid.df.demographic$race.ethnicity == "Black"),
+                 age_race_ethnicity_hispanic=covid.df.demographic$age*as.numeric(covid.df.demographic$race.ethnicity == "Hispanic/Latino"),
+                 age_race_ethnicity_other=covid.df.demographic$age*as.numeric(covid.df.demographic$race.ethnicity == "Other"),
+                 age_race_ethnicity_white=covid.df.demographic$age*as.numeric(covid.df.demographic$race.ethnicity == "White"),
                  miss = covid.df.demographic$miss.esda,
                  N = nrow(covid.df.demographic))
 
 esda_mu_params <- head(names(esda_dat), length(esda_dat)-2)
-esda_model_text_file <- "esda-age-gender-health-race-beta_n_0_50-a_05_50_b_-05_50.txt"
+esda_model_prefix <- paste0("beta_",
+                               beta_mean,
+                               "_",
+                               beta_precision,
+                              "-a_",
+                              a_mean,
+                              "_",
+                              a_precision,
+                              "-b_",
+                              b_mean,
+                              "_",
+                              b_precision)
+esda_model_text_file = paste0(esda_model_prefix, ".txt")
 
-create_model_text_file(file_name=esda_model_text_file, 
+create_model_text_file(file_name=esda_model_text_file,
                        mu_params=esda_mu_params)
 
 esda_params_to_save <-c(c("mu", "y", "alpha"),
                         paste0(rep("beta",length(esda_mu_params)),
                                paste(1:length(esda_mu_params))),
                         c("a", "b"))
-esda_model_name <- "esda-age-gender-health-race-beta_n_0_50-a_05_50_b_-05_50.Rdata"
+esda_model_name <- paste0(esda_model_prefix, ".Rdata")
 
 esda_model <- get_model(dat=esda_dat,
                         params_to_save=esda_params_to_save,
